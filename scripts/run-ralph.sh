@@ -46,6 +46,10 @@ VERIFY_TEMPLATE="$TEMPLATES_DIR/verify.sh"
 MAX_FEATURE_RETRIES=${MAX_FEATURE_RETRIES:-3}  # 单个功能最大重试次数
 CLAUDE_TIMEOUT=${CLAUDE_TIMEOUT:-1800}  # 30分钟
 DELAY_SECONDS=${DELAY_SECONDS:-2}
+RALPH_AGENT=${RALPH_AGENT:-claude}  # 默认代理类型
+
+# 代理执行指令目录
+SKILLS_DIR="$RALPH_DIR/skills"
 
 # 功能重试跟踪文件
 FEATURE_RETRIES_FILE="$LOGS_DIR/feature_retries.json"
@@ -61,6 +65,37 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 mkdir -p "$CURRENT_DIR" "$QUEUE_DIR" "$TASKS_DIR" "$LOGS_DIR"
+
+# ============================================================
+# 获取代理执行指令文件
+# ============================================================
+get_executor_file() {
+    local agent="$1"
+    local executor_file="$SKILLS_DIR/executor-${agent}.md"
+
+    if [ ! -f "$executor_file" ]; then
+        log_err "未找到代理执行指令: $executor_file"
+        log_info "可用代理: claude, codex, gemini"
+        exit 1
+    fi
+
+    echo "$executor_file"
+}
+
+# 验证代理类型
+validate_agent() {
+    local agent="$1"
+    case "$agent" in
+        claude|codex|gemini)
+            return 0
+            ;;
+        *)
+            log_err "无效的代理类型: $agent"
+            log_info "可用代理: claude, codex, gemini"
+            exit 1
+            ;;
+    esac
+}
 
 # ============================================================
 # 功能重试跟踪
@@ -151,6 +186,7 @@ Ralph Loop v2.0 - 长时运行任务调度器
 
 用法:
   ralph                          运行当前任务（增量模式）
+  ralph --agent <type>           指定代理类型 (claude/codex/gemini)
   ralph --init                   初始化新任务（Initializer Agent 模式）
   ralph --queue                  显示任务队列
   ralph --enqueue <file>         添加任务到队列
@@ -165,6 +201,11 @@ Ralph Loop v2.0 - 长时运行任务调度器
   ralph --clean                  清理工作区（确保干净状态）
   ralph --help                   显示帮助
 
+代理类型:
+  --agent claude    Claude Code (Anthropic) - 默认
+  --agent codex     Codex CLI (OpenAI)
+  --agent gemini    Gemini CLI (Google)
+
 工作模式:
   1. Initializer Agent (--init): 设置环境，创建 features.json 和 init.sh
   2. Coding Agent (默认): 增量式工作，每次一个功能，保持干净状态
@@ -172,6 +213,10 @@ Ralph Loop v2.0 - 长时运行任务调度器
 目录结构:
   .ralph/
   ├── scripts/          # 脚本
+  ├── skills/           # 代理执行指令
+  │   ├── executor-claude.md
+  │   ├── executor-codex.md
+  │   └── executor-gemini.md
   ├── templates/        # 模板
   ├── current/          # 当前任务
   │   ├── task.md       # 任务描述
@@ -188,6 +233,7 @@ Ralph Loop v2.0 - 长时运行任务调度器
   MAX_ITERATIONS=10       最大循环次数
   MAX_FEATURE_RETRIES=3   单个功能最大重试次数
   CLAUDE_TIMEOUT=1800     单次执行超时(秒)
+  RALPH_AGENT=claude      默认代理类型
 
 EOF
 }
@@ -476,6 +522,13 @@ build_coding_prompt() {
     local iteration=$1
     local feature_id=$2
 
+    # 获取执行指令文件
+    local executor_file=$(get_executor_file "$RALPH_AGENT")
+    local executor_content=""
+    if [ -f "$executor_file" ]; then
+        executor_content=$(cat "$executor_file")
+    fi
+
     # 获取 git 状态
     local git_status=""
     local git_log=""
@@ -504,7 +557,7 @@ build_coding_prompt() {
     fi
 
     cat << EOF
-# Ralph Loop v2.0 - Coding Agent 模式
+# Ralph Loop v2.0 - Coding Agent 模式 (代理: $RALPH_AGENT)
 
 你是 Ralph Loop 的执行实例（循环 #$iteration）。
 
@@ -524,6 +577,14 @@ build_coding_prompt() {
 - 进度日志: \`$CURRENT_PROGRESS\`
 - 启动脚本: \`$CURRENT_INIT\`
 - 验证脚本: \`$CURRENT_VERIFY\`
+
+---
+
+## 🤖 代理执行指令 ($RALPH_AGENT)
+
+$executor_content
+
+---
 
 ## 📋 当前任务
 
@@ -1001,6 +1062,28 @@ EOF
 # 命令处理
 # ============================================================
 case "${1:-}" in
+    --agent|-a)
+        validate_agent "$2"
+        RALPH_AGENT="$2"
+        log_ok "代理类型设置为: $RALPH_AGENT"
+        # 如果有第三个参数，继续处理
+        if [ -n "${3:-}" ]; then
+            shift 2
+            set -- "$@"
+        else
+            # 只设置代理，不运行任务
+            exit 0
+        fi
+        # 继续执行后续命令
+        case "${1:-}" in
+            "")
+                main
+                ;;
+            *)
+                exec "$0" "$@"
+                ;;
+        esac
+        ;;
     --init|-i)
         init_task "$2"
         ;;
