@@ -103,8 +103,12 @@ cp -r "$SCRIPT_DIR/skills/"* "$TARGET_DIR/skills/"
 echo -e "${BLUE}  复制模板文件...${NC}"
 cp "$SCRIPT_DIR/templates/"* "$TARGET_DIR/templates/"
 
-# 复制主 skill 文件
-cp "$SCRIPT_DIR/skill.md" "$TARGET_DIR/skill.md"
+# 复制主 skill 文件和参考文档
+cp "$SCRIPT_DIR/SKILL.md" "$TARGET_DIR/SKILL.md"
+if [ -d "$SCRIPT_DIR/references" ]; then
+    mkdir -p "$TARGET_DIR/references"
+    cp -r "$SCRIPT_DIR/references/"* "$TARGET_DIR/references/"
+fi
 
 # 创建便捷命令
 echo -e "${BLUE}  创建便捷命令...${NC}"
@@ -137,8 +141,11 @@ case "$AGENT_TYPE" in
         fi
 
         mkdir -p "$SKILL_DIR"
-        cp "$SCRIPT_DIR/skill.md" "$SKILL_DIR/skill.md"
+        cp "$SCRIPT_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
         cp -r "$SCRIPT_DIR/skills/"* "$SKILL_DIR/"
+        if [ -d "$SCRIPT_DIR/references" ]; then
+            cp -r "$SCRIPT_DIR/references" "$SKILL_DIR/"
+        fi
 
         echo -e "${GREEN}  ✅ Claude Code Skill 安装完成${NC}"
         echo -e "${BLUE}  位置: $SKILL_DIR${NC}"
@@ -157,7 +164,7 @@ case "$AGENT_TYPE" in
         cat >> "$AGENTS_FILE" << 'EOF'
 # Ralph Loop 任务调度
 
-使用 `.ralph/skill.md` 作为 Ralph Loop 任务调度指南。
+使用 `.ralph/SKILL.md` 作为 Ralph Loop 任务调度指南。
 
 ## 工作流程
 
@@ -191,7 +198,7 @@ EOF
         cat >> "$GEMINI_FILE" << 'EOF'
 # Ralph Loop 任务调度
 
-使用 `.ralph/skill.md` 作为 Ralph Loop 任务调度指南。
+使用 `.ralph/SKILL.md` 作为 Ralph Loop 任务调度指南。
 
 ## 工作流程
 
@@ -230,11 +237,13 @@ echo "已安装:"
 echo ""
 echo "  📁 项目脚手架:"
 echo "     $TARGET_DIR/"
+echo "     ├── SKILL.md        # 主技能文件"
 echo "     ├── scripts/        # 调度器和验证脚本"
 echo "     ├── skills/         # 代理执行指令"
 echo "     │   ├── executor-claude.md"
 echo "     │   ├── executor-codex.md"
 echo "     │   └── executor-gemini.md"
+echo "     ├── references/     # 参考文档"
 echo "     ├── templates/      # 模板文件"
 echo "     ├── current/        # 当前任务"
 echo "     ├── queue/          # 任务队列"
