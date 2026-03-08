@@ -16,6 +16,127 @@ Ralph Loop 解决 AI 代理在多上下文窗口中持续工作的挑战：
 
 ---
 
+## 支持的编码代理
+
+Ralph Loop 支持三种主流 AI 编码代理。Task Planner 和 Task Executor 必须根据当前代理使用正确的工具语法。
+
+### Claude Code (Anthropic)
+
+**配置文件**：`CLAUDE.md`（项目根目录）
+
+**核心工具**：
+
+| 工具 | 用途 | 示例 |
+|------|------|------|
+| `Read` | 读取文件 | 读取 features.json |
+| `Write` | 创建新文件 | 创建 task.md |
+| `Edit` | 编辑文件 | 修改 passes 字段 |
+| `Bash` | 执行命令 | git commit, npm test |
+| `Glob` | 文件搜索 | `**/*.ts` |
+| `Grep` | 内容搜索 | 搜索 "TODO" |
+| `Task` | 启动子代理 | 并行任务 |
+| `Skill` | 调用技能 | `/commit` |
+
+**语法特点**：
+- 工具调用通过 XML 标签：`<tool_name>...</tool_name>`
+- 支持 MCP (Model Context Protocol) 扩展
+- 权限控制通过 `allowedTools` 配置
+
+**Task Executor 工作流示例**：
+```
+1. Read features.json
+2. Edit src/component.ts (实现功能)
+3. Bash npm run test
+4. Edit features.json (修改 passes: true)
+5. Bash git add -A && git commit -m "feat: XXX"
+```
+
+---
+
+### Codex CLI (OpenAI)
+
+**配置文件**：`AGENTS.md`（项目根目录）或 `SKILL.md`（技能目录）
+
+**斜杠命令**：
+
+| 命令 | 用途 |
+|------|------|
+| `/init` | 创建 AGENTS.md 脚手架 |
+| `/model` | 切换模型 |
+| `/approvals` | 管理审批设置 |
+| `/diff` | 查看变更 |
+| `/review` | 代码审查 |
+| `/status` | 显示状态 |
+| `/compact` | 压缩对话 |
+| `/mcp` | MCP 服务器管理 |
+
+**语法特点**：
+- 在 composer 中输入 `/` 触发斜杠命令
+- 支持 VS Code、Cursor、Windsurf 集成
+- 配置文件使用 Markdown 格式
+
+**Task Executor 工作流示例**：
+```
+1. 读取 .ralph/current/features.json
+2. 编辑 src/component.ts
+3. !npm run test
+4. 修改 features.json 中的 passes 字段
+5. !git add -A && git commit -m "feat: XXX"
+```
+
+---
+
+### Gemini CLI (Google)
+
+**配置文件**：`GEMINI.md`（项目根目录，用于持久化记忆）
+
+**核心工具**：
+
+| 工具 | 用途 | 说明 |
+|------|------|------|
+| `read_file` | 读取文件 | 获取文件内容 |
+| `write_file` | 写入文件 | 创建或覆盖文件 |
+| `glob` | 文件匹配 | 按模式搜索文件 |
+| `search_file_content` | 内容搜索 | 类似 grep |
+| `replace` | 替换内容 | 编辑文件 |
+| `run_shell_command` | 执行命令 | Shell 命令 |
+| `list_directory` | 列出目录 | 查看目录结构 |
+
+**语法特点**：
+- `@文件名` - 引用文件内容
+- `!命令` - 执行 shell 命令
+- 支持交互式终端应用（vim, top）
+- 扩展系统支持第三方集成
+
+**Task Executor 工作流示例**：
+```
+1. read_file .ralph/current/features.json
+2. @src/component.ts (查看现有代码)
+3. replace src/component.ts (修改代码)
+4. !npm run test
+5. replace .ralph/current/features.json (修改 passes: true)
+6. !git add -A && git commit -m "feat: XXX"
+```
+
+---
+
+### 代理检测与适配
+
+Task Executor 应根据以下线索判断当前代理：
+
+| 代理 | 检测线索 |
+|------|----------|
+| Claude Code | 存在 `CLAUDE.md`，工具调用使用 XML 标签 |
+| Codex CLI | 存在 `AGENTS.md`，支持 `/` 斜杠命令 |
+| Gemini CLI | 存在 `GEMINI.md`，支持 `@` 和 `!` 语法 |
+
+**通用适配策略**：
+1. 文件操作：优先使用 Read/Write/Edit 或 read_file/write_file/replace
+2. 命令执行：使用 Bash 或 run_shell_command 或 `!`
+3. 搜索：使用 Glob/Grep 或 glob/search_file_content
+
+---
+
 ## 触发条件
 
 当用户：
@@ -238,10 +359,12 @@ echo "✅ 验证通过"
 
 ### 执行步骤
 
+**重要**：根据当前编码代理使用正确的工具语法（参见「支持的编码代理」章节）。
+
 ```
 1. 获取上下文
-   - pwd
-   - git log --oneline -10
+   - 执行命令获取当前目录
+   - 执行 git log --oneline -10
    - 读取 features.json
 
 2. 选择第一个 passes: false 的功能
@@ -252,8 +375,8 @@ echo "✅ 验证通过"
    - 发现现有 bug 先修复
 
 4. 实现单个功能
-   - 编写代码
-   - 运行测试
+   - 编写代码（使用对应代理的文件编辑工具）
+   - 运行测试（使用对应代理的命令执行工具）
    - 端到端验证
 
 5. 更新状态
@@ -270,6 +393,17 @@ echo "✅ 验证通过"
 8. 输出完成信号
    MISSION_COMPLETE
 ```
+
+### 各代理工具对照
+
+| 操作 | Claude Code | Codex CLI | Gemini CLI |
+|------|-------------|-----------|------------|
+| 读取文件 | `Read` | 直接读取 | `read_file` |
+| 创建文件 | `Write` | 直接写入 | `write_file` |
+| 编辑文件 | `Edit` | 直接编辑 | `replace` |
+| 执行命令 | `Bash` | `!` 前缀 | `!` 前缀或 `run_shell_command` |
+| 搜索文件 | `Glob` | `/` 命令 | `glob` |
+| 搜索内容 | `Grep` | `/` 命令 | `search_file_content` |
 
 ### 禁止事项
 
@@ -490,3 +624,25 @@ curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh |
 安装后：
 - 项目脚手架 → `.ralph/`
 - Claude Code Skill → `~/.claude/skills/ralph-loop/`
+
+### 各代理配置
+
+安装后，根据使用的编码代理创建相应配置文件：
+
+**Claude Code**：
+```bash
+# 已自动安装到 ~/.claude/skills/ralph-loop/
+# 可选：在项目根目录创建 CLAUDE.md 引用此 skill
+```
+
+**Codex CLI**：
+```bash
+# 在项目根目录创建 AGENTS.md
+echo '使用 .ralph/skill.md 作为 Ralph Loop 指南' > AGENTS.md
+```
+
+**Gemini CLI**：
+```bash
+# 在项目根目录创建 GEMINI.md
+echo '使用 .ralph/skill.md 作为 Ralph Loop 指南' > GEMINI.md
+```
