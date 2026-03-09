@@ -118,8 +118,10 @@ class RalphUI:
     def __init__(self):
         if RICH_AVAILABLE:
             self.console = Console()
+            self.live = None
         else:
             self.console = None
+            self.live = None
 
     def print(self, *args, **kwargs):
         """打印输出"""
@@ -282,6 +284,40 @@ class RalphUI:
             self.console.print("[dim]─[/dim]" * 60)
         else:
             print("-" * 60)
+
+    def execution_progress(self, elapsed: int, timeout: int, status: str = "运行中"):
+        """显示执行进度（原地更新）"""
+        if not self.console:
+            # 无 rich 时简单输出
+            remaining = timeout - elapsed
+            print(f"\r⏳ {status}: {elapsed}s / {timeout}s (剩余 {remaining}s)", end="", flush=True)
+            return
+
+        # 使用 rich 的原地更新
+        remaining = timeout - elapsed
+        pct = (elapsed / timeout * 100) if timeout > 0 else 0
+
+        # 构建进度条
+        bar_width = 20
+        bar_filled = int(pct / 100 * bar_width)
+        bar = "█" * bar_filled + "░" * (bar_width - bar_filled)
+
+        elapsed_str = self._format_time(elapsed)
+        remaining_str = self._format_time(remaining)
+
+        # 使用 console.print 的 end='\r' 实现原地更新
+        self.console.print(
+            f"\r[bold blue]⏳ {status}[/bold blue] [{bar}] {elapsed_str} / {self._format_time(timeout)}  "
+            f"[dim]剩余 {remaining_str}[/dim]  ",
+            end=""
+        )
+
+    def clear_progress(self):
+        """清除进度行"""
+        if self.console:
+            self.console.print("\r" + " " * 80 + "\r", end="")
+        else:
+            print("\r" + " " * 80 + "\r", end="")
 
     def show_help(self):
         """显示帮助"""
@@ -622,9 +658,10 @@ def run_claude(prompt_file: Path, log_file: Path, timeout: int) -> bool:
     运行 Claude 执行任务
     返回是否成功完成（非超时）
     """
-    ui.info(f"Claude 已启动 (超时: {timeout}s)...")
+    ui.info(f"Claude 已启动 (超时: {timeout}s)")
     ui.step(f"Prompt: {prompt_file}")
     ui.step(f"日志: {log_file}")
+    print()
 
     start_time = time.time()
 
@@ -638,13 +675,15 @@ def run_claude(prompt_file: Path, log_file: Path, timeout: int) -> bool:
                 cwd=config.project_root
             )
     except FileNotFoundError:
+        ui.clear_progress()
         ui.err("未找到 claude 命令，请确保 Claude Code 已安装")
         return False
     except Exception as e:
+        ui.clear_progress()
         ui.err(f"启动 Claude 失败: {e}")
         return False
 
-    # 等待进程完成或超时
+    # 等待进程完成或超时（原地更新进度）
     elapsed = 0
     completed = False
 
@@ -657,10 +696,11 @@ def run_claude(prompt_file: Path, log_file: Path, timeout: int) -> bool:
         time.sleep(1)
         elapsed += 1
 
-        # 每30秒显示进度
-        if elapsed % 30 == 0:
-            remaining = timeout - elapsed
-            ui.info(f"运行中... {elapsed}s/{timeout}s (剩余 {remaining}s)")
+        # 原地更新进度
+        ui.execution_progress(elapsed, timeout, "执行中")
+
+    # 清除进度行
+    ui.clear_progress()
 
     # 处理超时
     if not completed:
@@ -679,10 +719,10 @@ def run_claude(prompt_file: Path, log_file: Path, timeout: int) -> bool:
     exit_code = process.returncode if completed else -1
 
     if completed and exit_code == 0:
-        ui.ok(f"Claude 执行完成 (耗时: {duration}s)")
+        ui.ok(f"Claude 执行完成 (耗时: {ui._format_time(duration)})")
         return True
     else:
-        ui.warn(f"Claude 执行异常 (code: {exit_code}, 耗时: {duration}s)")
+        ui.warn(f"Claude 执行异常 (code: {exit_code}, 耗时: {ui._format_time(duration)})")
         return False
 
 # ============================================================
@@ -986,10 +1026,6 @@ def main_loop():
         iteration += 1
         log_file = config.logs_dir / f"iteration_{iteration:03d}.log"
 
-        ui.divider()
-        ui.ralph(f"循环 #{iteration}")
-        ui.divider()
-
         # 重新加载功能数据
         features_data = load_features()
         features = features_data.get('features', [])
@@ -1001,7 +1037,7 @@ def main_loop():
         current_feature = get_next_pending_feature(features)
         current_id = current_feature['id'] if current_feature else None
 
-        # 显示状态面板
+        # 显示状态面板（包含循环号）
         elapsed = int(time.time() - start_time)
         ui.status_panel(
             task_name=features_data.get('task_name', '未命名'),
@@ -1041,17 +1077,7 @@ def main_loop():
         if not build_coding_prompt(iteration, prompt_file):
             ui.err("构建 Prompt 失败")
             return 1
-
-        # 显示 prompt 预览
-        ui.info("Prompt 预览 (前 40 行):")
-        with open(prompt_file, 'r', encoding='utf-8') as f:
-            for i, line in enumerate(f):
-                if i >= 40:
-                    break
-                print(line.rstrip())
-        print()
-        ui.info("... (完整内容见日志)")
-        print()
+        ui.step(f"Prompt 文件: {prompt_file}")
 
         # 运行 Claude
         claude_success = run_claude(prompt_file, log_file, config.claude_timeout)

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║  Ralph Loop v2.0 - Stop Hook                                                 ║
+# ║  Ralph Loop v3.0 - Stop Hook                                                 ║
 # ║                                                                              ║
 # ║  验证流程：                                                                   ║
 # ║  1. 检查 AI 是否输出了 MISSION_COMPLETE                                       ║
