@@ -220,9 +220,9 @@ CLAUDE_TIMEOUT=1800            # 单次执行超时（秒）
 
 ```
 .ralph/
-├── ralph.py                 # 主调度器（Python）
 ├── scripts/
 │   ├── ralph                # Shell wrapper
+│   ├── ralph.py             # 主调度器（Python）
 │   └── stop-hook.sh         # 验证执行
 │
 ├── skills/                  # 代理执行指令

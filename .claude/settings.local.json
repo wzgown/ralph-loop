@@ -5,7 +5,11 @@
       "Bash(chmod +x:*)",
       "Bash(python3:*)",
       "Read(//private/tmp/test-ralph/**)",
-      "Bash(./ralph --status)"
+      "Bash(./ralph --status)",
+      "Bash(ls:*)",
+      "Bash(./scripts/ralph:*)",
+      "Bash(git:*)",
+      "Bash(bash:*)"
     ]
   }
 }

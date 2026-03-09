@@ -81,9 +81,9 @@ class Config:
 
     def __post_init__(self):
         if self.ralph_dir is None:
-            self.ralph_dir = Path(__file__).parent.resolve()
+            self.scripts_dir = Path(__file__).parent.resolve()
+            self.ralph_dir = self.scripts_dir.parent
         self.project_root = self.ralph_dir.parent
-        self.scripts_dir = self.ralph_dir / 'scripts'
         self.templates_dir = self.ralph_dir / 'templates'
         self.current_dir = self.ralph_dir / 'current'
         self.queue_dir = self.ralph_dir / 'queue'

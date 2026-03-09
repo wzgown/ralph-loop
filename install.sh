@@ -143,14 +143,10 @@ mkdir -p "$TARGET_DIR"/{scripts,skills,templates,current,queue,tasks,logs}
 
 # 复制脚本
 echo -e "${BLUE}  复制脚本文件...${NC}"
-cp "$SCRIPT_DIR/scripts/run-ralph.sh" "$TARGET_DIR/scripts/"
 cp "$SCRIPT_DIR/scripts/stop-hook.sh" "$TARGET_DIR/scripts/"
 cp "$SCRIPT_DIR/scripts/ralph" "$TARGET_DIR/scripts/"
-chmod +x "$TARGET_DIR/scripts/"*.sh "$TARGET_DIR/scripts/ralph"
-
-# 复制 Python 主程序
-echo -e "${BLUE}  复制 Python 主程序...${NC}"
-cp "$SCRIPT_DIR/ralph.py" "$TARGET_DIR/"
+cp "$SCRIPT_DIR/scripts/ralph.py" "$TARGET_DIR/scripts/"
+chmod +x "$TARGET_DIR/scripts/"*.sh "$TARGET_DIR/scripts/ralph" "$TARGET_DIR/scripts/ralph.py"
 
 # 复制技能文件
 echo -e "${BLUE}  复制代理执行指令...${NC}"
@@ -171,16 +167,11 @@ fi
 echo -e "${BLUE}  创建便捷命令...${NC}"
 cat > ralph << 'RALPH_SCRIPT'
 #!/bin/bash
-# Ralph Loop v3.0 - 优先使用 Python 版本
-if command -v python3 &> /dev/null && [ -f "./.ralph/ralph.py" ]; then
-    export LANG="en_US.UTF-8"
-    export LC_ALL="en_US.UTF-8"
-    export PYTHONIOENCODING="utf-8"
-    exec python3 "./.ralph/ralph.py" "$@"
-else
-    # 回退到 Shell 版本
-    ./.ralph/scripts/run-ralph.sh "$@"
-fi
+# Ralph Loop v3.0 - Shell wrapper
+export LANG="en_US.UTF-8"
+export LC_ALL="en_US.UTF-8"
+export PYTHONIOENCODING="utf-8"
+exec python3 "./.ralph/scripts/ralph.py" "$@"
 RALPH_SCRIPT
 chmod +x ralph
 
@@ -307,11 +298,10 @@ echo "     rich 库: $([ $($PYTHON_CMD -c "import rich" 2>/dev/null && echo "yes
 echo ""
 echo "  📁 项目脚手架:"
 echo "     $TARGET_DIR/"
-echo "     ├── ralph.py        # Python 主程序 (v3.0)"
 echo "     ├── SKILL.md        # 主技能文件"
 echo "     ├── scripts/        # 调度器和验证脚本"
 echo "     │   ├── ralph       # Shell wrapper"
-echo "     │   ├── run-ralph.sh"
+echo "     │   ├── ralph.py    # Python 主程序 (v3.0)"
 echo "     │   └── stop-hook.sh"
 echo "     ├── skills/         # 代理执行指令"
 echo "     │   ├── executor-claude.md"

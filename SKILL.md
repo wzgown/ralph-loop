@@ -89,9 +89,9 @@ metadata:
 
 ```
 .ralph/
-├── ralph.py             # 主调度器（Python）
 ├── scripts/
 │   ├── ralph            # Shell wrapper
+│   ├── ralph.py         # 主调度器（Python）
 │   └── stop-hook.sh     # 验证脚本
 ├── skills/              # 代理执行指令
 │   ├── executor-claude.md

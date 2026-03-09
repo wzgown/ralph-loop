@@ -9,8 +9,8 @@ export PYTHONIOENCODING="utf-8"
 
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PYTHON_SCRIPT="$SCRIPT_DIR/ralph.py"
 RALPH_DIR="$(dirname "$SCRIPT_DIR")"
-PYTHON_SCRIPT="$RALPH_DIR/ralph.py"
 
 # 检查 Python 脚本是否存在
 if [ ! -f "$PYTHON_SCRIPT" ]; then
