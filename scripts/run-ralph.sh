@@ -143,12 +143,15 @@ increment_feature_retry() {
 get_feature_retries() {
     local feature_id="$1"
     init_feature_retries
-    grep -o "\"$feature_id\":[0-9]*" "$FEATURE_RETRIES_FILE" 2>/dev/null | cut -d: -f2 || echo "0"
+    local result=$(grep -o "\"$feature_id\":[0-9]*" "$FEATURE_RETRIES_FILE" 2>/dev/null | cut -d: -f2)
+    echo "${result:-0}"
 }
 
 should_skip_feature() {
     local feature_id="$1"
     local retries=$(get_feature_retries "$feature_id")
+    # 确保 retries 是有效数字
+    retries=${retries:-0}
     [ "$retries" -ge "$MAX_FEATURE_RETRIES" ]
 }
 
