@@ -1,8 +1,17 @@
 #!/bin/bash
 
+# ════════════════════════════════════════════════════════════════════════════════
 # 强制设置 UTF-8 编码，确保中文正确处理
+# ════════════════════════════════════════════════════════════════════════════════
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
+export LC_CTYPE="en_US.UTF-8"
+export PYTHONIOENCODING="utf-8"
+
+# 确保终端和文件操作使用 UTF-8
+if command -v stty &> /dev/null; then
+    stty iutf8 2>/dev/null || true
+fi
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
 # ║  Ralph Loop v2.0 - 长时运行任务调度器                                          ║
@@ -526,11 +535,11 @@ build_coding_prompt() {
     local iteration=$1
     local feature_id=$2
 
-    # 获取执行指令文件
+    # 获取执行指令文件（确保 UTF-8 编码）
     local executor_file=$(get_executor_file "$RALPH_AGENT")
     local executor_content=""
     if [ -f "$executor_file" ]; then
-        executor_content=$(cat "$executor_file")
+        executor_content=$(LC_ALL=en_US.UTF-8 cat "$executor_file" 2>/dev/null || cat "$executor_file")
     fi
 
     # 获取 git 状态
@@ -541,16 +550,22 @@ build_coding_prompt() {
         git_log=$(git -C "$PROJECT_ROOT" log --oneline -10 2>/dev/null || echo "")
     fi
 
-    # 读取进度文件
+    # 读取进度文件（确保 UTF-8 编码）
     local progress_content=""
     if [ -f "$CURRENT_PROGRESS" ]; then
-        progress_content=$(tail -50 "$CURRENT_PROGRESS")
+        progress_content=$(LC_ALL=en_US.UTF-8 tail -50 "$CURRENT_PROGRESS" 2>/dev/null || tail -50 "$CURRENT_PROGRESS")
+    fi
+
+    # 读取任务文件（确保 UTF-8 编码）
+    local task_content=""
+    if [ -f "$CURRENT_TASK" ]; then
+        task_content=$(LC_ALL=en_US.UTF-8 cat "$CURRENT_TASK" 2>/dev/null || cat "$CURRENT_TASK")
     fi
 
     # 获取下一个待处理功能
     local next_feature=""
     if [ -f "$CURRENT_FEATURES" ]; then
-        next_feature=$(grep -B 2 -A 8 '"passes": false' "$CURRENT_FEATURES" | head -15)
+        next_feature=$(LC_ALL=en_US.UTF-8 grep -B 2 -A 8 '"passes": false' "$CURRENT_FEATURES" 2>/dev/null | head -15)
     fi
 
     # 获取跳过的功能
@@ -592,7 +607,7 @@ $executor_content
 
 ## 📋 当前任务
 
-$(cat "$CURRENT_TASK")
+$task_content
 
 ---
 
@@ -679,10 +694,12 @@ run_claude() {
     local context_prompt="$1"
     local log_file="$2"
 
-    # 将 prompt 写入文件
+    # 将 prompt 写入文件（确保 UTF-8 编码）
     local prompt_id="ralph-$$-$(date +%s)"
     local prompt_file="$LOGS_DIR/${prompt_id}.txt"
-    echo "$context_prompt" > "$prompt_file"
+
+    # 使用 printf 替代 echo，确保 UTF-8 编码
+    printf '%s\n' "$context_prompt" > "$prompt_file"
 
     log_info "Claude 已启动 (超时: ${CLAUDE_TIMEOUT}s)..."
     log_step "Prompt: $prompt_file"
@@ -956,7 +973,8 @@ main() {
         # 构建 prompt
         local context_prompt=$(build_coding_prompt $iter)
         log_info "注入上下文..."
-        echo "$context_prompt" | head -40
+        # 使用 LC_ALL 确保正确显示中文
+        LC_ALL=en_US.UTF-8 printf '%s\n' "$context_prompt" | head -40
         echo ""
         log_info "... (完整内容见日志)"
         echo ""

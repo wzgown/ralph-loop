@@ -40,6 +40,7 @@ features.json 是 Ralph Loop 的核心文件，定义了任务的功能清单。
 | `task_id` | string | 是 | 任务唯一标识 |
 | `task_name` | string | 是 | 任务名称 |
 | `created_at` | string | 是 | 创建时间（ISO 8601） |
+| `requirements_dir` | string | 否 | 需求文档目录路径（默认 `requirements/`） |
 | `features` | array | 是 | 功能列表 |
 
 ### 功能级别字段
@@ -50,6 +51,7 @@ features.json 是 Ralph Loop 的核心文件，定义了任务的功能清单。
 | `category` | string | 否 | 分类：functional, ui, api, bugfix |
 | `description` | string | 是 | 简洁的功能描述 |
 | `priority` | string | 否 | 优先级：high, medium, low |
+| `requirement_refs` | array | 否 | 需求文档引用列表（如 `["requirements/auth.md#login"]`） |
 | `steps` | array | 是 | 可执行的测试步骤 |
 | `verify_command` | string | 是 | 自动化验证命令 |
 | `passes` | boolean | 是 | 是否通过（**AI 只能修改此字段**） |

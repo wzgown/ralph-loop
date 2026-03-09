@@ -58,31 +58,37 @@ Codex CLI 直接使用自然语言操作文件，无需特定工具名称。
    - !pwd
    - !git log --oneline -10
    - 读取 .ralph/current/features.json
+   - 读取 .ralph/current/task.md（包含需求文档引用）
 
 2. 选择第一个 passes: false 的功能
 
-3. 验证基础功能
+3. 阅读需求文档（重要！）
+   - 检查功能是否有 requirement_refs 字段
+   - 如有，读取相关需求文档（如 requirements/auth.md）
+   - 理解完整的业务规则后再开始实现
+
+4. 验证基础功能
    - !bash .ralph/current/init.sh 启动开发服务器
    - 使用浏览器自动化测试基本功能
    - 发现现有 bug 先修复
 
-4. 实现单个功能
+5. 实现单个功能
    - 直接编辑代码文件
    - !npm run test
    - 端到端验证
 
-5. 更新状态
+6. 更新状态
    - 修改 features.json 中的 passes 字段为 true
    - 不要删除或修改其他内容
 
-6. 提交进度
+7. 提交进度
    - !git add -A
    - !git commit -m "feat: 完成功能 XXX"
 
-7. 更新 progress.md
+8. 更新 progress.md
    - 添加会话记录
 
-8. 输出完成信号
+9. 输出完成信号
    MISSION_COMPLETE
 ```
 

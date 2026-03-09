@@ -38,10 +38,11 @@ metadata:
 **触发**：用户描述需求时，AI 主动创建任务文件。
 
 **输出**：
-1. `task.md` - 任务描述（背景、成功标准、约束）
+1. `task.md` - 任务描述（背景、需求文档引用、成功标准、约束）
 2. `features.json` - 结构化功能清单（核心）
-3. `init.sh` - 环境初始化脚本
-4. `verify.sh` - 验证脚本
+3. `requirements/` - 需求文档目录（可选，存放详细业务规则）
+4. `init.sh` - 环境初始化脚本
+5. `verify.sh` - 验证脚本
 
 **功能拆分原则**：
 - 粒度适中：每个功能 1-2 小时可完成
@@ -93,6 +94,9 @@ metadata:
     ├── current/              # 当前任务
     │   ├── task.md           # 任务描述
     │   ├── features.json     # 功能清单 ⬅️ 核心
+    │   ├── requirements/     # 需求文档 ⬅️ 详细业务规则
+    │   │   ├── xxx.md        # 具体需求文档
+    │   │   └── ...
     │   ├── progress.md       # 进度日志
     │   ├── init.sh           # 启动脚本
     │   └── verify.sh         # 验证脚本
@@ -105,6 +109,7 @@ metadata:
     {
       "id": "F001",
       "description": "功能描述",
+      "requirement_refs": ["requirements/xxx.md#section"],
       "steps": ["测试步骤"],
       "verify_command": "npm run test:e2e -- --grep 'xxx'",
       "passes": false
@@ -114,6 +119,7 @@ metadata:
 |------|------|
 | `id` | 功能唯一标识（F001, F002...） |
 | `description` | 简洁的功能描述 |
+| `requirement_refs` | 需求文档引用（可选，指向详细业务规则） |
 | `steps` | 可执行的测试步骤 |
 | `verify_command` | 自动化验证命令 |
 | `passes` | **AI 只能修改此字段** |
