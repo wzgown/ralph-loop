@@ -1,0 +1,5 @@
+# Ralph Loop v3.0 Python 依赖
+# 安装: pip install -r requirements.txt
+
+# 终端 UI 库（可选，但推荐安装以获得更好的体验）
+rich>=13.0.0
