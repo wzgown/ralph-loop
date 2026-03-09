@@ -108,6 +108,24 @@ class Config:
 # 全局配置实例
 config = Config()
 
+# 全局中断标志
+interrupted = False
+
+def signal_handler(signum, frame):
+    """处理中断信号"""
+    global interrupted
+    interrupted = True
+    ui.clear_progress()
+    print()  # 换行
+    ui.warn("收到中断信号，正在退出...")
+    # 终止所有子进程
+    try:
+        # 终止可能的 claude 子进程
+        subprocess.run(['pkill', '-P', str(os.getpid())], capture_output=True)
+    except:
+        pass
+    sys.exit(130)  # 128 + SIGINT(2)
+
 # ============================================================
 # 终端 UI (Rich)
 # ============================================================
@@ -287,13 +305,6 @@ class RalphUI:
 
     def execution_progress(self, elapsed: int, timeout: int, status: str = "运行中"):
         """显示执行进度（原地更新）"""
-        if not self.console:
-            # 无 rich 时简单输出
-            remaining = timeout - elapsed
-            print(f"\r⏳ {status}: {elapsed}s / {timeout}s (剩余 {remaining}s)", end="", flush=True)
-            return
-
-        # 使用 rich 的原地更新
         remaining = timeout - elapsed
         pct = (elapsed / timeout * 100) if timeout > 0 else 0
 
@@ -304,20 +315,26 @@ class RalphUI:
 
         elapsed_str = self._format_time(elapsed)
         remaining_str = self._format_time(remaining)
+        timeout_str = self._format_time(timeout)
 
-        # 使用 console.print 的 end='\r' 实现原地更新
-        self.console.print(
-            f"\r[bold blue]⏳ {status}[/bold blue] [{bar}] {elapsed_str} / {self._format_time(timeout)}  "
-            f"[dim]剩余 {remaining_str}[/dim]  ",
-            end=""
-        )
+        if not self.console:
+            # 无 rich 时简单输出
+            print(f"\r⏳ {status} [{bar}] {elapsed_str} / {timeout_str}  剩余 {remaining_str}  ", end="", flush=True)
+            return
+
+        # 使用 sys.stdout 直接输出，绕过 rich 的处理
+        import sys
+        line = f"\r⏳ {status} [{bar}] {elapsed_str} / {timeout_str}  剩余 {remaining_str}  "
+        # 清除行尾多余字符
+        line = line.ljust(80)
+        sys.stdout.write(line)
+        sys.stdout.flush()
 
     def clear_progress(self):
         """清除进度行"""
-        if self.console:
-            self.console.print("\r" + " " * 80 + "\r", end="")
-        else:
-            print("\r" + " " * 80 + "\r", end="")
+        import sys
+        sys.stdout.write("\r" + " " * 80 + "\r")
+        sys.stdout.flush()
 
     def show_help(self):
         """显示帮助"""
@@ -684,10 +701,11 @@ def run_claude(prompt_file: Path, log_file: Path, timeout: int) -> bool:
         return False
 
     # 等待进程完成或超时（原地更新进度）
+    global interrupted
     elapsed = 0
     completed = False
 
-    while elapsed < timeout:
+    while elapsed < timeout and not interrupted:
         ret = process.poll()
         if ret is not None:
             completed = True
@@ -701,6 +719,17 @@ def run_claude(prompt_file: Path, log_file: Path, timeout: int) -> bool:
 
     # 清除进度行
     ui.clear_progress()
+
+    # 处理中断
+    if interrupted:
+        ui.warn("收到中断信号，终止 Claude 进程...")
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+        return False
 
     # 处理超时
     if not completed:
@@ -1023,6 +1052,12 @@ def main_loop():
     start_time = time.time()
 
     while True:
+        # 检查中断
+        global interrupted
+        if interrupted:
+            ui.warn("任务被中断")
+            return 130
+
         iteration += 1
         log_file = config.logs_dir / f"iteration_{iteration:03d}.log"
 
@@ -1221,6 +1256,10 @@ def show_features():
 
 def main():
     """主入口"""
+    # 注册信号处理器
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     parser = argparse.ArgumentParser(
         description='Ralph Loop v3.0 - 长时运行任务调度器',
         formatter_class=argparse.RawDescriptionHelpFormatter
