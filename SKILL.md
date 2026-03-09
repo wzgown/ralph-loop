@@ -13,11 +13,11 @@ description: |
 license: MIT
 metadata:
   author: wzgown
-  version: 2.0.0
+  version: 3.0.0
   category: workflow-automation
 ---
 
-# Ralph Loop v2.0
+# Ralph Loop
 
 基于 Anthropic "Effective harnesses for long-running agents" 最佳实践的长时运行任务调度器。
 
@@ -75,78 +75,72 @@ metadata:
 
 | 代理 | 配置文件 | 执行指令 |
 |------|----------|----------|
-| Claude Code | `CLAUDE.md` | [executor-claude.md](./skills/executor-claude.md) |
-| Codex CLI | `AGENTS.md` | [executor-codex.md](./skills/executor-codex.md) |
-| Gemini CLI | `GEMINI.md` | [executor-gemini.md](./skills/executor-gemini.md) |
+| Claude Code | `CLAUDE.md` | executor-claude.md |
+| Codex CLI | `AGENTS.md` | executor-codex.md |
+| Gemini CLI | `GEMINI.md` | executor-gemini.md |
 
-    ./ralph --agent claude    # Claude Code（默认）
-    ./ralph --agent codex     # Codex CLI
-    ./ralph --agent gemini    # Gemini CLI
+```bash
+./ralph --agent claude    # Claude Code（默认）
+./ralph --agent codex     # Codex CLI
+./ralph --agent gemini    # Gemini CLI
+```
 
 ## 目录结构
 
-    .ralph/
-    ├── scripts/
-    │   ├── run-ralph.sh      # 主调度器
-    │   └── stop-hook.sh      # 验证脚本
-    ├── skills/               # 代理执行指令
-    ├── templates/            # 模板文件
-    ├── current/              # 当前任务
-    │   ├── task.md           # 任务描述
-    │   ├── features.json     # 功能清单 ⬅️ 核心
-    │   ├── requirements/     # 需求文档 ⬅️ 详细业务规则
-    │   │   ├── xxx.md        # 具体需求文档
-    │   │   └── ...
-    │   ├── progress.md       # 进度日志
-    │   ├── init.sh           # 启动脚本
-    │   └── verify.sh         # 验证脚本
-    ├── queue/                # 任务队列
-    ├── tasks/                # 历史任务归档
-    └── logs/                 # 循环日志
+```
+.ralph/
+├── ralph.py             # 主调度器（Python）
+├── scripts/
+│   ├── ralph            # Shell wrapper
+│   └── stop-hook.sh     # 验证脚本
+├── skills/              # 代理执行指令
+│   ├── executor-claude.md
+│   ├── executor-codex.md
+│   └── executor-gemini.md
+├── templates/           # 模板文件
+├── current/             # 当前任务
+│   ├── task.md          # 任务描述
+│   ├── features.json    # 功能清单 ⬅️ 核心
+│   ├── requirements/    # 需求文档（可选）
+│   ├── progress.md      # 进度日志
+│   ├── init.sh          # 启动脚本
+│   └── verify.sh        # 验证脚本
+├── queue/               # 任务队列
+├── tasks/               # 历史任务归档
+├── logs/                # 循环日志
+└── references/          # 参考文档
+```
 
 ## features.json 核心字段
 
-    {
-      "id": "F001",
-      "description": "功能描述",
-      "requirement_refs": ["requirements/xxx.md#section"],
-      "steps": ["测试步骤"],
-      "verify_command": "npm run test:e2e -- --grep 'xxx'",
-      "passes": false
-    }
+```json
+{
+  "id": "F001",
+  "description": "功能描述",
+  "requirement_refs": ["requirements/xxx.md#section"],
+  "steps": ["测试步骤"],
+  "verify_command": "npm run test:e2e -- --grep 'xxx'",
+  "passes": false
+}
+```
 
 | 字段 | 说明 |
 |------|------|
 | `id` | 功能唯一标识（F001, F002...） |
 | `description` | 简洁的功能描述 |
-| `requirement_refs` | 需求文档引用（可选，指向详细业务规则） |
+| `requirement_refs` | 需求文档引用（可选） |
 | `steps` | 可执行的测试步骤 |
 | `verify_command` | 自动化验证命令 |
 | `passes` | **AI 只能修改此字段** |
 
-详细格式见 [references/features-format.md](./references/features-format.md)
-
 ## 命令参考
 
-    ralph                          # 运行当前任务
-    ralph --agent <type>           # 指定代理类型
-    ralph --new                    # 创建空白任务
-    ralph --init [file]            # 初始化新任务
-    ralph --status                 # 显示当前状态
-    ralph --help                   # 显示帮助
-
-## 安装
-
-    # Git clone
-    git clone https://github.com/wzgown/ralph-loop.git
-    cd /path/to/your/project
-    /path/to/ralph-loop/install.sh --agent claude
-
-    # 一键安装
-    curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh | bash -s -- --agent claude
-
-## 参考文档
-
-- [Task Planner 详细流程](./references/task-planner.md)
-- [features.json 格式规范](./references/features-format.md)
-- [完整示例](./references/examples.md)
+```bash
+ralph                    # 运行当前任务
+ralph --agent <type>     # 指定代理类型
+ralph --init [file]      # 初始化新任务
+ralph --new              # 创建空白任务
+ralph --status           # 显示当前状态
+ralph --features         # 显示功能清单
+ralph --tasks            # 列出所有任务
+```

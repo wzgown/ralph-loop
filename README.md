@@ -220,11 +220,12 @@ CLAUDE_TIMEOUT=1800            # 单次执行超时（秒）
 
 ```
 .ralph/
+├── ralph.py                 # 主调度器（Python）
 ├── scripts/
-│   ├── run-ralph.sh      # 主调度器
-│   └── stop-hook.sh      # 验证执行
+│   ├── ralph                # Shell wrapper
+│   └── stop-hook.sh         # 验证执行
 │
-├── skills/               # 代理执行指令
+├── skills/                  # 代理执行指令
 │   ├── executor-claude.md
 │   ├── executor-codex.md
 │   └── executor-gemini.md
@@ -235,18 +236,20 @@ CLAUDE_TIMEOUT=1800            # 单次执行超时（秒）
 │   ├── progress-template.md   # 进度日志模板
 │   └── init-template.sh       # 启动脚本模板
 │
-├── current/              # 当前任务
-│   ├── task.md           # 任务描述
-│   ├── features.json     # 功能清单 ⬅️ 核心
-│   ├── progress.md       # 进度日志
-│   ├── init.sh           # 启动脚本
-│   └── verify.sh         # 验证脚本
+├── current/                 # 当前任务
+│   ├── task.md              # 任务描述
+│   ├── features.json        # 功能清单 ⬅️ 核心
+│   ├── requirements/        # 需求文档（可选）
+│   ├── progress.md          # 进度日志
+│   ├── init.sh              # 启动脚本
+│   └── verify.sh            # 验证脚本
 │
-├── queue/                # 任务队列
-│   └── task-queue.json   # 待执行任务列表
+├── queue/                   # 任务队列
+│   └── task-queue.json      # 待执行任务列表
 │
-├── tasks/                # 历史任务归档
-└── logs/                 # 循环日志
+├── tasks/                   # 历史任务归档
+├── logs/                    # 循环日志
+└── references/              # 参考文档
 ```
 
 ## 功能清单 (features.json) 规范
