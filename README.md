@@ -1,9 +1,16 @@
-# Ralph Loop v2.0
+# Ralph Loop v3.0
 
 [![GitHub](https://img.shields.io/badge/GitHub-wzgown/ralph--loop-blue?logo=github)](https://github.com/wzgown/ralph-loop)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python)](https://www.python.org/)
 
 > 基于 Anthropic "Effective harnesses for long-running agents" 最佳实践
 > 支持多代理、多任务队列、结构化功能清单、增量式进度跟踪
+
+## v3.0 新特性
+
+- 🐍 **Python 重写** - 原生 UTF-8 支持，彻底解决中文编码问题
+- 🎨 **Rich 终端 UI** - 现代化的进度显示和状态面板
+- 📊 **实时状态** - 直观的功能进度条和任务状态
 
 ## 核心设计
 
@@ -70,9 +77,40 @@ cd /path/to/your/project
 
 # 方式二：一键安装
 curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh | bash -s -- --agent claude
+```
 
-# 方式三：手动复制
-cp -r ralph-loop /path/to/your/project/.ralph
+### 系统要求
+
+- **Python 3.8+**（必需）
+- **rich** 库（可选，用于更好的终端 UI）
+
+```bash
+# 安装 Python 依赖
+pip install rich
+
+# 或使用 requirements.txt
+pip install -r requirements.txt
+```
+
+### 终端 UI 预览
+
+安装 rich 库后，你将获得现代化的终端界面：
+
+```
+╭────────────────────────────────────────────────────────────╮
+│  🔄 Ralph Loop v3.0                          Claude Agent  │
+├────────────────────────────────────────────────────────────┤
+│  📋 任务: 实现用户认证系统                                  │
+│  📊 进度: ████████░░░░░░░░░░░░ 3/8 功能 (37%)             │
+│  ⏱️  运行时间: 00:15:32                                     │
+╰────────────────────────────────────────────────────────────╯
+
+┌── 功能清单 ────────────────────────────────────────────────┐
+│ ✅ F1 用户注册                                              │
+│ ✅ F2 用户登录                                              │
+│ 🔄 F3 密码重置 ← 当前                                       │
+│ ⏳ F4 邮箱验证                                              │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ### 创建新任务

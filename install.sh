@@ -62,15 +62,67 @@ esac
 
 echo ""
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  Ralph Loop 安装程序${NC}"
+echo -e "${BLUE}  Ralph Loop v3.0 安装程序${NC}"
 echo -e "${BLUE}  代理类型: $AGENT_TYPE${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
 echo ""
 
 # ============================================================
-# 步骤 1: 安装脚手架到项目
+# 步骤 1: 检查并安装 Python 依赖
 # ============================================================
-echo -e "${CYAN}[1/3] 安装脚手架到项目...${NC}"
+echo -e "${CYAN}[1/4] 检查 Python 环境...${NC}"
+echo ""
+
+# 检查 Python 3
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD=python3
+elif command -v python &> /dev/null; then
+    PYTHON_VERSION=$(python --version 2>&1 | grep -oE '[0-9]+\.[0-9]+')
+    if [[ "$PYTHON_VERSION" =~ ^3\. ]]; then
+        PYTHON_CMD=python
+    else
+        echo -e "${YELLOW}⚠️  需要 Python 3.x，当前版本: $(python --version 2>&1)${NC}"
+        echo "   请安装 Python 3: https://www.python.org/downloads/"
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}⚠️  未找到 Python${NC}"
+    echo "   请安装 Python 3: https://www.python.org/downloads/"
+    exit 1
+fi
+
+PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
+echo -e "${GREEN}  ✅ Python: $PYTHON_VERSION${NC}"
+
+# 检查并安装 rich 库
+echo -e "${BLUE}  检查 rich 库...${NC}"
+if $PYTHON_CMD -c "import rich" 2>/dev/null; then
+    RICH_VERSION=$($PYTHON_CMD -c "import rich; print(rich.__version__)" 2>/dev/null || echo "unknown")
+    echo -e "${GREEN}  ✅ rich 库已安装 (v$RICH_VERSION)${NC}"
+else
+    echo -e "${YELLOW}  rich 库未安装，正在安装...${NC}"
+
+    # 尝试使用 pip 安装
+    if $PYTHON_CMD -m pip install rich 2>/dev/null; then
+        echo -e "${GREEN}  ✅ rich 库安装成功${NC}"
+    elif $PYTHON_CMD -m pip install --user rich 2>/dev/null; then
+        echo -e "${GREEN}  ✅ rich 库安装成功 (--user)${NC}"
+    elif pip3 install rich 2>/dev/null; then
+        echo -e "${GREEN}  ✅ rich 库安装成功 (pip3)${NC}"
+    elif pip install rich 2>/dev/null; then
+        echo -e "${GREEN}  ✅ rich 库安装成功 (pip)${NC}"
+    else
+        echo -e "${YELLOW}⚠️  rich 库安装失败，将使用基础终端输出${NC}"
+        echo "   您可以稍后手动安装: pip install rich"
+    fi
+fi
+
+echo ""
+
+# ============================================================
+# 步骤 2: 安装脚手架到项目
+# ============================================================
+echo -e "${CYAN}[2/4] 安装脚手架到项目...${NC}"
 echo ""
 
 # 检查目标目录
@@ -93,7 +145,12 @@ mkdir -p "$TARGET_DIR"/{scripts,skills,templates,current,queue,tasks,logs}
 echo -e "${BLUE}  复制脚本文件...${NC}"
 cp "$SCRIPT_DIR/scripts/run-ralph.sh" "$TARGET_DIR/scripts/"
 cp "$SCRIPT_DIR/scripts/stop-hook.sh" "$TARGET_DIR/scripts/"
-chmod +x "$TARGET_DIR/scripts/"*.sh
+cp "$SCRIPT_DIR/scripts/ralph" "$TARGET_DIR/scripts/"
+chmod +x "$TARGET_DIR/scripts/"*.sh "$TARGET_DIR/scripts/ralph"
+
+# 复制 Python 主程序
+echo -e "${BLUE}  复制 Python 主程序...${NC}"
+cp "$SCRIPT_DIR/ralph.py" "$TARGET_DIR/"
 
 # 复制技能文件
 echo -e "${BLUE}  复制代理执行指令...${NC}"
@@ -114,7 +171,16 @@ fi
 echo -e "${BLUE}  创建便捷命令...${NC}"
 cat > ralph << 'RALPH_SCRIPT'
 #!/bin/bash
-./.ralph/scripts/run-ralph.sh "$@"
+# Ralph Loop v3.0 - 优先使用 Python 版本
+if command -v python3 &> /dev/null && [ -f "./.ralph/ralph.py" ]; then
+    export LANG="en_US.UTF-8"
+    export LC_ALL="en_US.UTF-8"
+    export PYTHONIOENCODING="utf-8"
+    exec python3 "./.ralph/ralph.py" "$@"
+else
+    # 回退到 Shell 版本
+    ./.ralph/scripts/run-ralph.sh "$@"
+fi
 RALPH_SCRIPT
 chmod +x ralph
 
@@ -122,9 +188,9 @@ echo -e "${GREEN}  ✅ 脚手架安装完成${NC}"
 echo ""
 
 # ============================================================
-# 步骤 2: 安装代理配置
+# 步骤 3: 安装代理配置
 # ============================================================
-echo -e "${CYAN}[2/3] 安装代理配置 ($AGENT_TYPE)...${NC}"
+echo -e "${CYAN}[3/4] 安装代理配置 ($AGENT_TYPE)...${NC}"
 echo ""
 
 case "$AGENT_TYPE" in
@@ -224,21 +290,29 @@ esac
 echo ""
 
 # ============================================================
-# 步骤 3: 显示完成信息
+# 步骤 4: 显示完成信息
 # ============================================================
-echo -e "${CYAN}[3/3] 安装完成${NC}"
+echo -e "${CYAN}[4/4] 安装完成${NC}"
 echo ""
 
 echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  🎉 Ralph Loop 安装完成！${NC}"
+echo -e "${GREEN}  🎉 Ralph Loop v3.0 安装完成！${NC}"
 echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
 echo ""
 echo "已安装:"
 echo ""
+echo "  🐍 Python 环境:"
+echo "     $PYTHON_VERSION"
+echo "     rich 库: $([ $($PYTHON_CMD -c "import rich" 2>/dev/null && echo "yes") ] && echo "✅ 已安装" || echo "⚠️ 未安装 (可选)")"
+echo ""
 echo "  📁 项目脚手架:"
 echo "     $TARGET_DIR/"
+echo "     ├── ralph.py        # Python 主程序 (v3.0)"
 echo "     ├── SKILL.md        # 主技能文件"
 echo "     ├── scripts/        # 调度器和验证脚本"
+echo "     │   ├── ralph       # Shell wrapper"
+echo "     │   ├── run-ralph.sh"
+echo "     │   └── stop-hook.sh"
 echo "     ├── skills/         # 代理执行指令"
 echo "     │   ├── executor-claude.md"
 echo "     │   ├── executor-codex.md"
