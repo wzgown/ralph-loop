@@ -94,29 +94,6 @@ fi
 PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
 echo -e "${GREEN}  ✅ Python: $PYTHON_VERSION${NC}"
 
-# 检查并安装 rich 库
-echo -e "${BLUE}  检查 rich 库...${NC}"
-if $PYTHON_CMD -c "import rich" 2>/dev/null; then
-    RICH_VERSION=$($PYTHON_CMD -c "import rich; print(rich.__version__)" 2>/dev/null || echo "unknown")
-    echo -e "${GREEN}  ✅ rich 库已安装 (v$RICH_VERSION)${NC}"
-else
-    echo -e "${YELLOW}  rich 库未安装，正在安装...${NC}"
-
-    # 尝试使用 pip 安装
-    if $PYTHON_CMD -m pip install rich 2>/dev/null; then
-        echo -e "${GREEN}  ✅ rich 库安装成功${NC}"
-    elif $PYTHON_CMD -m pip install --user rich 2>/dev/null; then
-        echo -e "${GREEN}  ✅ rich 库安装成功 (--user)${NC}"
-    elif pip3 install rich 2>/dev/null; then
-        echo -e "${GREEN}  ✅ rich 库安装成功 (pip3)${NC}"
-    elif pip install rich 2>/dev/null; then
-        echo -e "${GREEN}  ✅ rich 库安装成功 (pip)${NC}"
-    else
-        echo -e "${YELLOW}⚠️  rich 库安装失败，将使用基础终端输出${NC}"
-        echo "   您可以稍后手动安装: pip install rich"
-    fi
-fi
-
 echo ""
 
 # ============================================================
@@ -294,7 +271,6 @@ echo "已安装:"
 echo ""
 echo "  🐍 Python 环境:"
 echo "     $PYTHON_VERSION"
-echo "     rich 库: $([ $($PYTHON_CMD -c "import rich" 2>/dev/null && echo "yes") ] && echo "✅ 已安装" || echo "⚠️ 未安装 (可选)")"
 echo ""
 echo "  📁 项目脚手架:"
 echo "     $TARGET_DIR/"

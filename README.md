@@ -81,20 +81,9 @@ curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh |
 
 ### 系统要求
 
-- **Python 3.8+**（必需）
-- **rich** 库（可选，用于更好的终端 UI）
-
-```bash
-# 安装 Python 依赖
-pip install rich
-
-# 或使用 requirements.txt
-pip install -r requirements.txt
-```
+- **Python 3.8+**（必需，无其他依赖）
 
 ### 终端 UI 预览
-
-安装 rich 库后，你将获得现代化的终端界面：
 
 ```
 ╭────────────────────────────────────────────────────────────╮

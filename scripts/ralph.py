@@ -31,20 +31,30 @@ if sys.stdout.encoding != 'utf-8':
 if sys.stderr.encoding != 'utf-8':
     sys.stderr.reconfigure(encoding='utf-8')
 
-# 尝试导入 rich 库
-try:
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
-    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
-    from rich.live import Live
-    from rich.layout import Layout
-    from rich.text import Text
-    from rich import box
-    RICH_AVAILABLE = True
-except ImportError:
-    RICH_AVAILABLE = False
-    print("提示: 安装 rich 库以获得更好的终端体验: pip install rich")
+# ============================================================
+# ANSI 颜色代码
+# ============================================================
+
+class Colors:
+    """ANSI 颜色代码"""
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+
+    # 前景色
+    BLACK = '\033[30m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+
+    @staticmethod
+    def colorize(text: str, color: str) -> str:
+        """给文本添加颜色"""
+        return f"{color}{text}{Colors.RESET}"
 
 # ============================================================
 # 配置
@@ -127,121 +137,132 @@ def signal_handler(signum, frame):
     sys.exit(130)  # 128 + SIGINT(2)
 
 # ============================================================
-# 终端 UI (Rich)
+# 终端 UI
 # ============================================================
 
 class RalphUI:
-    """Ralph Loop 终端 UI"""
+    """Ralph Loop 终端 UI (无外部依赖)"""
 
     def __init__(self):
-        if RICH_AVAILABLE:
-            self.console = Console()
-            self.live = None
-        else:
-            self.console = None
-            self.live = None
+        self._terminal_width = self._get_terminal_width()
 
-    def print(self, *args, **kwargs):
-        """打印输出"""
-        if self.console:
-            self.console.print(*args, **kwargs)
+    def _get_terminal_width(self) -> int:
+        """获取终端宽度"""
+        try:
+            return os.get_terminal_size().columns
+        except:
+            return 80
+
+    def _print_box(self, title: str, content: str, border_color: str = Colors.BLUE):
+        """打印带边框的面板"""
+        lines = content.split('\n')
+        # 计算实际显示宽度（忽略 ANSI 代码）
+        def display_width(s):
+            import re
+            clean = re.sub(r'\033\[[0-9;]*m', '', s)
+            return len(clean)
+
+        max_len = max(display_width(line) for line in lines + [title])
+        max_len = min(max_len, self._terminal_width - 4)
+
+        # 边框字符
+        tl, tr, bl, br = '╔', '╗', '╚', '╝'
+        h, v = '═', '║'
+
+        # 打印顶部
+        if title:
+            title_line = f" {title} "
+            top = f"{tl}{title_line}{h * (max_len - len(title_line) + 1)}{tr}"
         else:
-            # 移除 rich 标记
-            text = ' '.join(str(a) for a in args)
-            print(text)
+            top = f"{tl}{h * (max_len + 2)}{tr}"
+        print(Colors.colorize(top, border_color))
+
+        # 打印内容
+        for line in lines:
+            clean_len = display_width(line)
+            padding = ' ' * (max_len - clean_len)
+            print(f"{Colors.colorize(v, border_color)} {line}{padding} {Colors.colorize(v, border_color)}")
+
+        # 打印底部
+        bottom = f"{bl}{h * (max_len + 2)}{br}"
+        print(Colors.colorize(bottom, border_color))
 
     def header(self, title: str, subtitle: str = ""):
         """打印标题头"""
-        if self.console:
-            self.console.print(Panel(
-                f"[bold cyan]{title}[/bold cyan]" + (f"\n{subtitle}" if subtitle else ""),
-                box=box.DOUBLE,
-                border_style="magenta",
-                padding=(1, 2)
-            ))
-        else:
-            print(f"\n{'='*60}")
-            print(f"  {title}")
-            if subtitle:
-                print(f"  {subtitle}")
-            print(f"{'='*60}\n")
+        print()
+        print(Colors.colorize(f"{'═' * 60}", Colors.MAGENTA))
+        print(Colors.colorize(f"  {title}", Colors.BOLD + Colors.MAGENTA))
+        if subtitle:
+            print(Colors.colorize(f"  {subtitle}", Colors.MAGENTA))
+        print(Colors.colorize(f"{'═' * 60}", Colors.MAGENTA))
+        print()
 
     def status_panel(self, task_name: str, iteration: int, passed: int, total: int,
                      elapsed: int, current_feature: str = "", remaining_timeout: int = 0):
         """打印状态面板"""
-        if not self.console:
-            return
-
         # 计算进度百分比
         pct = (passed / total * 100) if total > 0 else 0
         bar_filled = int(pct / 5)  # 20 格
-        bar = "█" * bar_filled + "░" * (20 - bar_filled)
+        bar = Colors.colorize("█" * bar_filled, Colors.GREEN) + Colors.colorize("░" * (20 - bar_filled), Colors.DIM)
 
         elapsed_str = self._format_time(elapsed)
         remaining_str = self._format_time(remaining_timeout) if remaining_timeout > 0 else "N/A"
 
-        panel_content = f"""[bold]任务:[/bold] {task_name}
-[bold]代理:[/bold] {config.agent.upper()}  [bold]循环:[/bold] #{iteration}
-
-[bold]进度:[/bold] [{bar}] {passed}/{total} ({pct:.0f}%)
-[bold]时间:[/bold] ⏱️ {elapsed_str}  [bold]剩余超时:[/bold] ⏳ {remaining_str}"""
+        print()
+        print(Colors.colorize("╔══ Ralph Loop v3.0 ══════════════════════════════════════════╗", Colors.BLUE))
+        print(Colors.colorize("║", Colors.BLUE) + f" {Colors.BOLD}任务:{Colors.RESET} {task_name}" + Colors.colorize(" ║", Colors.BLUE))
+        print(Colors.colorize("║", Colors.BLUE) + f" {Colors.BOLD}代理:{Colors.RESET} {config.agent.upper()}  {Colors.BOLD}循环:{Colors.RESET} #{iteration}" + Colors.colorize(" ║", Colors.BLUE))
+        print(Colors.colorize("║", Colors.BLUE) + "                                                              " + Colors.colorize("║", Colors.BLUE))
+        print(Colors.colorize("║", Colors.BLUE) + f" {Colors.BOLD}进度:{Colors.RESET} [{bar}] {passed}/{total} ({pct:.0f}%)" + Colors.colorize(" ║", Colors.BLUE))
+        print(Colors.colorize("║", Colors.BLUE) + f" {Colors.BOLD}时间:{Colors.RESET} {elapsed_str}  {Colors.BOLD}剩余:{Colors.RESET} {remaining_str}" + Colors.colorize(" ║", Colors.BLUE))
 
         if current_feature:
-            panel_content += f"\n\n[bold yellow]🔄 当前功能:[/bold yellow] {current_feature}"
+            print(Colors.colorize("║", Colors.BLUE) + "                                                              " + Colors.colorize("║", Colors.BLUE))
+            print(Colors.colorize("║", Colors.BLUE) + f" {Colors.YELLOW}{Colors.BOLD}🔄 当前:{Colors.RESET} {current_feature[:50]}" + Colors.colorize(" ║", Colors.BLUE))
 
-        self.console.print(Panel(
-            panel_content,
-            title="[bold magenta]🔄 Ralph Loop v3.0[/bold magenta]",
-            border_style="blue",
-            padding=(1, 2)
-        ))
+        print(Colors.colorize("╚════════════════════════════════════════════════════════════════╝", Colors.BLUE))
+        print()
 
     def features_table(self, features: List[Dict], current_id: str = None):
-        """打印功能清单表格"""
-        if not self.console:
-            return
-
-        table = Table(title="📋 功能清单", box=box.ROUNDED, show_header=True)
-        table.add_column("状态", width=3)
-        table.add_column("ID", width=6)
-        table.add_column("描述", width=50)
-        table.add_column("优先级", width=8)
-
+        """打印功能清单"""
+        print()
         for f in features:
             fid = f.get('id', '?')
-            desc = f.get('description', '')[:50]
+            desc = f.get('description', '')[:60]
             priority = f.get('priority', 'medium')
             passes = f.get('passes', False)
 
             # 状态图标
             if passes:
-                status = "[green]✅[/green]"
+                status = Colors.colorize("✅", Colors.GREEN)
             elif fid == current_id:
-                status = "[yellow]🔄[/yellow]"
+                status = Colors.colorize("🔄", Colors.YELLOW)
             else:
-                status = "[dim]⏳[/dim]"
+                status = Colors.colorize("⏳", Colors.DIM)
 
-            # 优先级颜色
+            # 优先级标记
             if priority == 'high':
-                priority_str = "[red]high[/red]"
+                priority_str = Colors.colorize("[high]", Colors.RED)
             elif priority == 'low':
-                priority_str = "[dim]low[/dim]"
+                priority_str = Colors.colorize("[low]", Colors.DIM)
             else:
-                priority_str = "medium"
+                priority_str = ""
 
-            table.add_row(status, fid, desc, priority_str)
-
-        self.console.print(table)
+            # 当前功能高亮
+            if fid == current_id:
+                print(f"  {status} {Colors.BOLD}{Colors.YELLOW}{fid}{Colors.RESET} - {desc} {priority_str}")
+            else:
+                print(f"  {status} {fid} - {desc} {priority_str}")
 
     def log(self, level: str, msg: str):
         """打印日志"""
         colors = {
-            'info': 'blue',
-            'ok': 'green',
-            'warn': 'yellow',
-            'err': 'red',
-            'ralph': 'magenta',
-            'step': 'cyan'
+            'info': Colors.BLUE,
+            'ok': Colors.GREEN,
+            'warn': Colors.YELLOW,
+            'err': Colors.RED,
+            'ralph': Colors.MAGENTA,
+            'step': Colors.CYAN
         }
         icons = {
             'info': 'ℹ️',
@@ -252,13 +273,10 @@ class RalphUI:
             'step': '→'
         }
 
-        color = colors.get(level, 'white')
+        color = colors.get(level, Colors.WHITE)
         icon = icons.get(level, '•')
 
-        if self.console:
-            self.console.print(f"[{color}]{icon}[/{color}] {msg}")
-        else:
-            print(f"{icon} {msg}")
+        print(Colors.colorize(f"{icon} {msg}", color))
 
     def step(self, msg: str):
         """打印步骤"""
@@ -298,10 +316,7 @@ class RalphUI:
 
     def divider(self):
         """打印分隔线"""
-        if self.console:
-            self.console.print("[dim]─[/dim]" * 60)
-        else:
-            print("-" * 60)
+        print(Colors.colorize("─" * 60, Colors.DIM))
 
     def execution_progress(self, elapsed: int, timeout: int, status: str = "运行中"):
         """显示执行进度（原地更新）"""
@@ -317,13 +332,7 @@ class RalphUI:
         remaining_str = self._format_time(remaining)
         timeout_str = self._format_time(timeout)
 
-        if not self.console:
-            # 无 rich 时简单输出
-            print(f"\r⏳ {status} [{bar}] {elapsed_str} / {timeout_str}  剩余 {remaining_str}  ", end="", flush=True)
-            return
-
-        # 使用 sys.stdout 直接输出，绕过 rich 的处理
-        import sys
+        # 使用 sys.stdout 直接输出
         line = f"\r⏳ {status} [{bar}] {elapsed_str} / {timeout_str}  剩余 {remaining_str}  "
         # 清除行尾多余字符
         line = line.ljust(80)
@@ -332,7 +341,6 @@ class RalphUI:
 
     def clear_progress(self):
         """清除进度行"""
-        import sys
         sys.stdout.write("\r" + " " * 80 + "\r")
         sys.stdout.flush()
 
@@ -373,10 +381,7 @@ Ralph Loop v3.0 - 长时运行任务调度器
   CLAUDE_TIMEOUT=1800     单次执行超时(秒)
   RALPH_AGENT=claude      默认代理类型
 """
-        if self.console:
-            self.console.print(Panel(help_text, title="[bold]帮助[/bold]", border_style="blue"))
-        else:
-            print(help_text)
+        self._print_box(title="帮助", content=help_text.strip(), border_color=Colors.BLUE)
 
 
 # 全局 UI 实例
@@ -1259,6 +1264,11 @@ def main():
     # 注册信号处理器
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+
+    # 检查是否请求帮助
+    if '--help' in sys.argv or '-h' in sys.argv:
+        ui.show_help()
+        return 0
 
     parser = argparse.ArgumentParser(
         description='Ralph Loop v3.0 - 长时运行任务调度器',

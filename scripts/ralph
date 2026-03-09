@@ -28,12 +28,5 @@ else
     exit 1
 fi
 
-# 检查 rich 库是否安装
-if ! $PYTHON -c "import rich" 2>/dev/null; then
-    echo "提示: 安装 rich 库以获得更好的终端体验:"
-    echo "  pip install rich"
-    echo ""
-fi
-
 # 调用 Python 脚本
 exec $PYTHON "$PYTHON_SCRIPT" "$@"
