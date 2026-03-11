@@ -61,7 +61,7 @@ fetch_dir() {
                 files="task-template.md features-template.json init-template.sh progress-template.md verify.sh"
                 ;;
             "references")
-                files="README.md"
+                files="examples.md features-format.md task-planner.md"
                 ;;
             *)
                 files=""
