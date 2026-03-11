@@ -21,6 +21,60 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TARGET_DIR=".ralph"
 AGENT_TYPE="claude"
 
+# 检测安装模式：本地安装还是远程安装
+REMOTE_REPO="https://raw.githubusercontent.com/wzgown/ralph-loop/main"
+if [ ! -d "$SCRIPT_DIR/scripts" ]; then
+    INSTALL_MODE="remote"
+else
+    INSTALL_MODE="local"
+fi
+
+# 从远程或本地获取文件
+fetch_file() {
+    local src_path="$1"
+    local dest_path="$2"
+
+    # 确保目标目录存在
+    mkdir -p "$(dirname "$dest_path")"
+
+    if [ "$INSTALL_MODE" = "remote" ]; then
+        curl -fsSL "$REMOTE_REPO/$src_path" -o "$dest_path"
+    else
+        cp "$SCRIPT_DIR/$src_path" "$dest_path"
+    fi
+}
+
+# 从远程或本地获取目录
+fetch_dir() {
+    local src_path="$1"
+    local dest_path="$2"
+
+    if [ "$INSTALL_MODE" = "remote" ]; then
+        mkdir -p "$dest_path"
+        # 获取目录中的文件列表并下载
+        local files
+        case "$src_path" in
+            "skills")
+                files="executor-claude.md executor-codex.md executor-gemini.md"
+                ;;
+            "templates")
+                files="task-template.md features-template.json init-template.sh progress-template.md verify.sh"
+                ;;
+            "references")
+                files="README.md"
+                ;;
+            *)
+                files=""
+                ;;
+        esac
+        for f in $files; do
+            curl -fsSL "$REMOTE_REPO/$src_path/$f" -o "$dest_path/$f" 2>/dev/null || true
+        done
+    else
+        cp -r "$SCRIPT_DIR/$src_path/"* "$dest_path/"
+    fi
+}
+
 # 解析参数
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -121,29 +175,29 @@ fi
 
 # 创建目录结构
 echo -e "${BLUE}  创建目录结构...${NC}"
-mkdir -p "$TARGET_DIR"/{scripts,skills,templates,current,queue,tasks,logs}
+mkdir -p "$TARGET_DIR"/{scripts,skills,templates,current,queue,tasks,logs,references}
 
-# 复制脚本
+# 复制/下载脚本
 echo -e "${BLUE}  复制脚本文件...${NC}"
-cp "$SCRIPT_DIR/scripts/stop-hook.sh" "$TARGET_DIR/scripts/"
-cp "$SCRIPT_DIR/scripts/ralph" "$TARGET_DIR/scripts/"
-cp "$SCRIPT_DIR/scripts/ralph.py" "$TARGET_DIR/scripts/"
+if [ "$INSTALL_MODE" = "remote" ]; then
+    echo -e "${BLUE}  (远程安装模式，从 GitHub 下载文件...)${NC}"
+fi
+fetch_file "scripts/stop-hook.sh" "$TARGET_DIR/scripts/stop-hook.sh"
+fetch_file "scripts/ralph" "$TARGET_DIR/scripts/ralph"
+fetch_file "scripts/ralph.py" "$TARGET_DIR/scripts/ralph.py"
 chmod +x "$TARGET_DIR/scripts/"*.sh "$TARGET_DIR/scripts/ralph" "$TARGET_DIR/scripts/ralph.py"
 
-# 复制技能文件
+# 复制/下载技能文件
 echo -e "${BLUE}  复制代理执行指令...${NC}"
-cp -r "$SCRIPT_DIR/skills/"* "$TARGET_DIR/skills/"
+fetch_dir "skills" "$TARGET_DIR/skills"
 
-# 复制模板
+# 复制/下载模板
 echo -e "${BLUE}  复制模板文件...${NC}"
-cp "$SCRIPT_DIR/templates/"* "$TARGET_DIR/templates/"
+fetch_dir "templates" "$TARGET_DIR/templates"
 
-# 复制主 skill 文件和参考文档
-cp "$SCRIPT_DIR/SKILL.md" "$TARGET_DIR/SKILL.md"
-if [ -d "$SCRIPT_DIR/references" ]; then
-    mkdir -p "$TARGET_DIR/references"
-    cp -r "$SCRIPT_DIR/references/"* "$TARGET_DIR/references/"
-fi
+# 复制/下载主 skill 文件和参考文档
+fetch_file "SKILL.md" "$TARGET_DIR/SKILL.md"
+fetch_dir "references" "$TARGET_DIR/references"
 
 # 创建便捷命令
 echo -e "${BLUE}  创建便捷命令...${NC}"
@@ -179,12 +233,10 @@ case "$AGENT_TYPE" in
             rm -rf "$SKILL_DIR"
         fi
 
-        mkdir -p "$SKILL_DIR"
-        cp "$SCRIPT_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
-        cp -r "$SCRIPT_DIR/skills/"* "$SKILL_DIR/"
-        if [ -d "$SCRIPT_DIR/references" ]; then
-            cp -r "$SCRIPT_DIR/references" "$SKILL_DIR/"
-        fi
+        mkdir -p "$SKILL_DIR" "$SKILL_DIR/references"
+        fetch_file "SKILL.md" "$SKILL_DIR/SKILL.md"
+        fetch_dir "skills" "$SKILL_DIR"
+        fetch_dir "references" "$SKILL_DIR/references"
 
         echo -e "${GREEN}  ✅ Claude Code Skill 安装完成${NC}"
         echo -e "${BLUE}  位置: $SKILL_DIR${NC}"
