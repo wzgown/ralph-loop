@@ -9,7 +9,11 @@
       "Bash(ls:*)",
       "Bash(./scripts/ralph:*)",
       "Bash(git:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(mkdir -p /tmp/test-ralph-install)",
+      "Read(//tmp/**)",
+      "Bash(/Users/wangzhigang/workspace/wzgown/ralph-loop/install.sh --agent claude)",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/templates/task.md 2>&1 | head -20)"
     ]
   }
 }

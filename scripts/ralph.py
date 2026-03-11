@@ -1108,7 +1108,11 @@ def main_loop():
             ui.warn("⚠️ 所有未完成功能已达到最大重试次数")
             ui.warn(f"   跳过的功能: {', '.join(skipped)}")
             ui.warn("════════════════════════════════════════════════════════")
-            archive_task(iteration, "partial-skipped")
+            print()
+            ui.info("可选操作:")
+            print("  1. 重置重试计数: rm .ralph/logs/feature_retries.json")
+            print("  2. 手动归档: ./ralph --archive")
+            print("  3. 查看日志: cat .ralph/logs/iteration_*.log")
             return 1
 
         # 构建 prompt
