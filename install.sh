@@ -105,11 +105,16 @@ echo ""
 # 检查目标目录
 if [ -d "$TARGET_DIR" ]; then
     echo -e "${YELLOW}⚠️  目录 $TARGET_DIR 已存在${NC}"
-    read -p "是否覆盖? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "安装已取消"
-        exit 1
+    # 检查是否在交互式终端运行
+    if [ -t 0 ]; then
+        read -p "是否覆盖? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "安装已取消"
+            exit 1
+        fi
+    else
+        echo -e "${BLUE}  非交互模式，自动覆盖...${NC}"
     fi
     rm -rf "$TARGET_DIR"
 fi
