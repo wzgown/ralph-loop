@@ -16,8 +16,6 @@ AI：我来帮你创建这个任务...
     1. 创建 .ralph/current/task.md
     2. 创建 .ralph/current/requirements/（需求文档）
     3. 创建 .ralph/current/features.json（5 个功能）
-    4. 创建 .ralph/current/init.sh
-    5. 创建 .ralph/current/verify.sh
 
     任务已创建。运行 ./ralph 开始执行。
 ```
@@ -157,32 +155,4 @@ mkdir -p .ralph/current/requirements
   { "id": "F003", "description": "登录错误处理", "verify_command": "npm run test:e2e -- --grep 'login error'" },
   { "id": "F004", "description": "会话持久化", "verify_command": "npm run test:e2e -- --grep 'session'" }
 ]
-```
-
-### 步骤 5：创建 init.sh
-
-```bash
-#!/bin/bash
-# 任务初始化脚本
-
-echo "=== 初始化任务环境 ==="
-
-# 根据项目类型添加初始化逻辑
-# 例如：启动开发服务器、运行数据库迁移等
-
-echo "✅ 环境初始化完成"
-```
-
-### 步骤 6：创建 verify.sh
-
-```bash
-#!/bin/bash
-set -e
-echo "=== 验证功能 ==="
-
-# 检查代码编译
-# 运行测试
-# 其他验证逻辑
-
-echo "✅ 验证通过"
 ```

@@ -126,8 +126,6 @@ class Config:
         self.current_task = self.current_dir / 'task.md'
         self.current_features = self.current_dir / 'features.json'
         self.current_progress = self.current_dir / 'progress.md'
-        self.current_init = self.current_dir / 'init.sh'
-        self.current_verify = self.current_dir / 'verify.sh'
         self.task_queue = self.queue_dir / 'task-queue.json'
         self.stop_hook = self.core_dir / 'stop-hook.sh'
         self.feature_retries = self.logs_dir / 'feature_retries.json'
@@ -445,7 +443,7 @@ Ralph Loop v3.1 - 长时运行任务调度器
   (默认自动检测，无需指定 --agent)
 
 工作模式:
-  1. Initializer Agent (--init): 设置环境，创建 features.json 和 init.sh
+  1. Initializer Agent (--init): 设置环境，创建 features.json
   2. Coding Agent (默认): 增量式工作，每次一个功能，保持干净状态
 
 参数:
@@ -724,7 +722,7 @@ def build_coding_prompt(iteration: int, output_file: Path) -> bool:
    - 选择第一个 `passes: false` 的功能
 
 3. **验证基础功能**
-   - 运行 `init.sh` 启动开发服务器
+   - 启动开发服务器（如有需要）
    - 使用浏览器自动化工具测试基本功能
    - 如果发现现有 bug，先修复
 
@@ -862,7 +860,7 @@ def run_claude(prompt_file: Path, log_file: Path, timeout: int) -> bool:
 # Stop Hook 验证
 # ============================================================
 
-def run_stop_hook(log_file: Path) -> bool:
+def run_stop_hook(log_file: Path, iteration: int) -> bool:
     """
     运行 Stop Hook 验证
     返回是否通过
@@ -871,6 +869,10 @@ def run_stop_hook(log_file: Path) -> bool:
 
     hook_log = log_file.with_suffix('.log.hook')
 
+    # 设置环境变量传递 iteration
+    env = os.environ.copy()
+    env['RALPH_ITERATION'] = str(iteration)
+
     try:
         with open(hook_log, 'w', encoding='utf-8') as f:
             result = subprocess.run(
@@ -878,7 +880,8 @@ def run_stop_hook(log_file: Path) -> bool:
                 cwd=config.project_root,
                 stdout=f,
                 stderr=subprocess.STDOUT,
-                encoding='utf-8'
+                encoding='utf-8',
+                env=env
             )
 
         if result.returncode == 0:
@@ -924,8 +927,6 @@ def archive_task(total_iterations: int, status: str = "completed"):
         (config.current_task, 'task.md'),
         (config.current_features, 'features.json'),
         (config.current_progress, 'progress.md'),
-        (config.current_init, 'init.sh'),
-        (config.current_verify, 'verify.sh'),
     ]
 
     for src, dst in files_to_copy:
@@ -967,8 +968,6 @@ def archive_task(total_iterations: int, status: str = "completed"):
 - task.md - 任务描述
 - features.json - 功能清单
 - progress.md - 进度日志
-- init.sh - 启动脚本
-- verify.sh - 验证脚本
 - logs/ - 循环日志
 """
 
@@ -976,8 +975,7 @@ def archive_task(total_iterations: int, status: str = "completed"):
         f.write(summary)
 
     # 清理当前任务文件
-    for f in [config.current_task, config.current_features, config.current_progress,
-              config.current_init, config.current_verify]:
+    for f in [config.current_task, config.current_features, config.current_progress]:
         if f.exists():
             f.unlink()
 
@@ -1059,31 +1057,15 @@ def init_task(task_file: Optional[Path] = None):
         with open(config.current_progress, 'w', encoding='utf-8') as f:
             f.write(content)
 
-    # 创建启动脚本
-    if not config.current_init.exists():
-        template = config.templates_dir / 'init-template.sh'
-        shutil.copy2(template, config.current_init)
-        os.chmod(config.current_init, 0o755)
-
-    # 创建验证脚本
-    if not config.current_verify.exists():
-        template = config.templates_dir / 'verify.sh'
-        shutil.copy2(template, config.current_verify)
-        os.chmod(config.current_verify, 0o755)
-
     ui.ok("环境初始化完成:")
     print()
     print(f"  📄 任务描述: {config.current_task}")
     print(f"  📋 功能清单: {config.current_features}")
     print(f"  📝 进度日志: {config.current_progress}")
-    print(f"  🚀 启动脚本: {config.current_init}")
-    print(f"  ✅ 验证脚本: {config.current_verify}")
     print()
     ui.info("下一步:")
     print("  1. 编辑 features.json 添加功能列表")
-    print("  2. 编辑 init.sh 设置环境启动命令")
-    print("  3. 编辑 verify.sh 添加验证逻辑")
-    print("  4. 运行: ralph")
+    print("  2. 运行: ralph")
 
     return True
 
@@ -1109,6 +1091,22 @@ def update_progress(iteration: int, success: bool, passed: int, total: int, erro
 
     if error_msg:
         entry += f"- 错误: {error_msg[:200]}\n"
+
+    # 读取验证错误详情（如果存在）
+    verify_errors_file = Path(f"/tmp/ralph_verify_errors_{iteration}")
+    if not success and verify_errors_file.exists():
+        try:
+            errors_content = verify_errors_file.read_text(encoding='utf-8').strip()
+            if errors_content:
+                entry += f"\n### 验证失败详情\n\n{errors_content}\n"
+        except Exception:
+            pass
+        finally:
+            # 清理临时文件
+            try:
+                verify_errors_file.unlink()
+            except Exception:
+                pass
 
     with open(config.current_progress, 'a', encoding='utf-8') as f:
         f.write(entry)
@@ -1227,7 +1225,7 @@ def main_loop():
         ui.info(f"日志已保存: {log_file}")
 
         # 运行 Stop Hook 验证
-        hook_success = run_stop_hook(log_file)
+        hook_success = run_stop_hook(log_file, iteration)
 
         # 重新加载功能数据检查更新
         features_data = load_features()

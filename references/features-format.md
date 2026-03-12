@@ -93,12 +93,60 @@ It is unacceptable to remove or edit tests because this could lead to missing or
 
 ### 可验证
 
-每个功能必须有明确的 `verify_command`。
+每个功能必须有明确的 `verify_command`，**必须进行事实性验收**（真正验证功能是否工作，而非形式上执行命令）。
+
+#### 原则
+
+1. **验收必须真实**：命令执行成功 ≠ 功能真正工作
+2. **验收必须自动化**：无需人工判断，命令退出码 0 表示通过
+3. **验收必须具体**：验证特定功能，而非笼统的 `npm test`
+
+#### 简单场景：单条命令
 
 ```json
 {
-  "verify_command": "npm run test:e2e -- --grep 'profile edit page'"
+  "verify_command": "npm run test:e2e -- --grep 'login form submits'"
 }
+```
+
+#### 复杂场景：调用验证脚本
+
+当单条命令不足以验证时，编写专用脚本：
+
+```json
+{
+  "verify_command": "bash .ralph/scripts/verify-login.sh"
+}
+```
+
+**验证脚本示例** (`.ralph/scripts/verify-login.sh`)：
+
+```bash
+#!/bin/bash
+set -e
+
+# 1. 运行 E2E 测试
+npm run test:e2e -- --grep "login"
+
+# 2. 验证数据库状态
+npm run db:check -- --expect-user "test@example.com"
+
+# 3. 验证 API 响应
+curl -s http://localhost:3000/api/session | jq -e '.authenticated == true'
+
+echo "✅ 所有验证通过"
+```
+
+#### 验证脚本目录结构
+
+```
+.ralph/
+├── current/
+│   └── features.json
+└── scripts/              # 验证脚本（推荐位置）
+    ├── verify-login.sh
+    ├── verify-payment.sh
+    └── verify-export.sh
 ```
 
 ### 独立性

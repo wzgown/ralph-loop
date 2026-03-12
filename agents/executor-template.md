@@ -56,7 +56,6 @@
 ### 3. 验证基础功能
 
 ```
-{agent specific syntax} bash .ralph/current/init.sh
 {browser automation syntax} 测试基本功能
 ```
 

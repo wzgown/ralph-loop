@@ -255,7 +255,7 @@ if [ "$SKIP_SKILL" = false ]; then
 
     # 复制模板
     echo -e "${BLUE}  复制模板文件...${NC}"
-    TEMPLATE_FILES="task-template.md features-template.json init-template.sh progress-template.md verify.sh"
+    TEMPLATE_FILES="task-template.md features-template.json progress-template.md"
     fetch_dir "templates" "$GLOBAL_SKILL_DIR/templates" "$TEMPLATE_FILES"
 
     # 复制 Skill 定义

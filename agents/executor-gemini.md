@@ -62,7 +62,6 @@ read_file: requirements/xxx.md
 ### 3. 验证基础功能
 
 ```
-!bash .ralph/current/init.sh
 使用 browser_agent 测试基本功能
 ```
 

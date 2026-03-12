@@ -62,9 +62,6 @@
 ### 3. 验证基础功能
 
 ```
-使用 Bash 工具：
-- command: bash .ralph/current/init.sh
-
 使用 mcp__chrome-devtools__navigate_page 导航到测试页面
 使用 mcp__chrome-devtools__take_snapshot 获取页面状态
 ```

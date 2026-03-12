@@ -74,13 +74,13 @@ metadata:
 1. `task.md` - 任务描述（背景、需求文档引用、成功标准、约束）
 2. `features.json` - 结构化功能清单（核心）
 3. `requirements/` - 需求文档目录（可选）
-4. `init.sh` - 环境初始化脚本
-5. `verify.sh` - 验证脚本
 
 **功能拆分原则**：
 - 粒度适中：每个功能 1-2 小时可完成
-- 可验证：必须有明确的 `verify_command`
+- 可验证：必须有明确的 `verify_command`（事实性验收，复杂场景用脚本）
 - 独立性：功能之间减少依赖
+
+详细规范见 [references/features-format.md](./references/features-format.md)
 
 详细流程见 [references/task-planner.md](./references/task-planner.md)
 
@@ -159,9 +159,7 @@ metadata:
 │   ├── task.md                 # 任务描述
 │   ├── features.json           # 功能清单 ⬅️ 核心
 │   ├── requirements/           # 需求文档（可选）
-│   ├── progress.md             # 进度日志
-│   ├── init.sh                 # 启动脚本
-│   └── verify.sh               # 验证脚本
+│   └── progress.md             # 进度日志
 ├── queue/                      # 任务队列
 ├── tasks/                      # 历史任务归档
 └── logs/                       # 循环日志

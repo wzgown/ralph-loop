@@ -52,7 +52,6 @@ read: requirements/xxx.md
 ### 3. 验证基础功能
 
 ```
-exec: bash .ralph/current/init.sh
 使用浏览器工具测试基本功能
 ```
 
