@@ -596,7 +596,7 @@ def build_coding_prompt(iteration: int, output_file: Path) -> bool:
     返回是否成功
     """
     # 获取执行指令文件
-    executor_file = config.skills_dir / f'executor-{config.agent}.md'
+    executor_file = config.skill_dir / 'agents' / f'executor-{config.agent}.md'
     executor_content = ""
     if executor_file.exists():
         with open(executor_file, 'r', encoding='utf-8') as f:
