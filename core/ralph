@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ralph Loop v3.0 - Shell Wrapper
+# Ralph Loop v3.1 - Shell Wrapper
 # 调用 Python 实现，解决中文编码问题
 
 # 设置 UTF-8 环境
@@ -7,8 +7,13 @@ export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 export PYTHONIOENCODING="utf-8"
 
-# 获取脚本所在目录
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# 获取脚本所在目录（处理符号链接）
+# 如果是符号链接，获取指向的实际文件所在目录
+if [ -L "$0" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "$(readlink "$0")")" && pwd)"
+else
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+fi
 PYTHON_SCRIPT="$SCRIPT_DIR/ralph.py"
 RALPH_DIR="$(dirname "$SCRIPT_DIR")"
 

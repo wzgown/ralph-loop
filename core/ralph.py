@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Ralph Loop v3.0 - 长时运行任务调度器 (Python 版本)
+Ralph Loop v3.1 - 长时运行任务调度器 (Python 版本)
 
 基于 Anthropic "Effective harnesses for long-running agents" 最佳实践
 核心设计：
@@ -99,7 +99,8 @@ class Config:
         self.queue_dir = self.ralph_dir / 'queue'
         self.tasks_dir = self.ralph_dir / 'tasks'
         self.logs_dir = self.ralph_dir / 'logs'
-        self.skills_dir = self.ralph_dir / 'skills'
+        self.agents_dir = self.ralph_dir / 'agents'
+        self.skills_dir = self.agents_dir  # 向后兼容
 
         self.current_task = self.current_dir / 'task.md'
         self.current_features = self.current_dir / 'features.json'
@@ -120,6 +121,51 @@ config = Config()
 
 # 全局中断标志
 interrupted = False
+
+def detect_agent() -> str:
+    """
+    自动检测当前运行的 AI Agent 类型
+
+    检测优先级:
+    1. RALPH_AGENT 环境变量
+    2. Claude Code 标记
+    3. Codex CLI 标记
+    4. Gemini CLI 标记
+    5. OpenClaw 标记
+    6. 默认返回 claude
+    """
+    # 优先级 1: 环境变量
+    if os.environ.get('RALPH_AGENT'):
+        return os.environ['RALPH_AGENT'].lower()
+
+    # 优先级 2: Claude Code 标记
+    if os.environ.get('CLAUDE_CODE_SESSION'):
+        return 'claude'
+    if Path('.claude/CLAUDE.md').exists():
+        return 'claude'
+    if os.environ.get('CLAUDE_PROJECT'):
+        return 'claude'
+
+    # 优先级 3: Codex CLI 标记
+    if os.environ.get('CODEX_SESSION'):
+        return 'codex'
+    if Path('.codexrc').exists():
+        return 'codex'
+
+    # 优先级 4: Gemini CLI 标记
+    if os.environ.get('GEMINI_SESSION'):
+        return 'gemini'
+    if Path('.geminirc').exists():
+        return 'gemini'
+
+    # 优先级 5: OpenClaw 标记
+    if os.environ.get('OPENCLAW_SESSION'):
+        return 'openclaw'
+    if Path('.openclawrc').exists():
+        return 'openclaw'
+
+    # 默认
+    return 'claude'
 
 def signal_handler(signum, frame):
     """处理中断信号"""
@@ -209,7 +255,7 @@ class RalphUI:
         remaining_str = self._format_time(remaining_timeout) if remaining_timeout > 0 else "N/A"
 
         print()
-        print(Colors.colorize("╔══ Ralph Loop v3.0 ══════════════════════════════════════════╗", Colors.BLUE))
+        print(Colors.colorize("╔══ Ralph Loop v3.1 ══════════════════════════════════════════╗", Colors.BLUE))
         print(Colors.colorize("║", Colors.BLUE) + f" {Colors.BOLD}任务:{Colors.RESET} {task_name}" + Colors.colorize(" ║", Colors.BLUE))
         print(Colors.colorize("║", Colors.BLUE) + f" {Colors.BOLD}代理:{Colors.RESET} {config.agent.upper()}  {Colors.BOLD}循环:{Colors.RESET} #{iteration}" + Colors.colorize(" ║", Colors.BLUE))
         print(Colors.colorize("║", Colors.BLUE) + "                                                              " + Colors.colorize("║", Colors.BLUE))
@@ -347,11 +393,12 @@ class RalphUI:
     def show_help(self):
         """显示帮助"""
         help_text = """
-Ralph Loop v3.0 - 长时运行任务调度器
+Ralph Loop v3.1 - 长时运行任务调度器
 
 用法:
-  ralph                          运行当前任务（增量模式）
-  ralph --agent <type>           指定代理类型 (claude/codex/gemini)
+  ralph                          运行当前任务（增量模式，自动检测 agent）
+  ralph --agent <type>           指定代理类型 (claude/codex/gemini/openclaw)
+  ralph --detect                 显示检测到的 agent 类型
   ralph --init                   初始化新任务（Initializer Agent 模式）
   ralph --queue                  显示任务队列
   ralph --enqueue <file>         添加任务到队列
@@ -370,6 +417,11 @@ Ralph Loop v3.0 - 长时运行任务调度器
   --agent claude    Claude Code (Anthropic) - 默认
   --agent codex     Codex CLI (OpenAI)
   --agent gemini    Gemini CLI (Google)
+  --agent openclaw  OpenClaw
+
+自动检测:
+  --detect          显示检测到的代理类型和环境信息
+  (默认自动检测，无需指定 --agent)
 
 工作模式:
   1. Initializer Agent (--init): 设置环境，创建 features.json 和 init.sh
@@ -553,7 +605,7 @@ def build_coding_prompt(iteration: int, output_file: Path) -> bool:
 """
 
     # 直接写入文件
-    prompt = f"""# Ralph Loop v3.0 - Coding Agent 模式 (代理: {config.agent})
+    prompt = f"""# Ralph Loop v3.1 - Coding Agent 模式 (代理: {config.agent})
 
 你是 Ralph Loop 的执行实例（循环 #{iteration}）。
 
@@ -1042,7 +1094,7 @@ def main_loop():
     passed_features = sum(1 for f in features if f.get('passes', False))
 
     ui.ralph("════════════════════════════════════════════════════════")
-    ui.ralph("  Ralph Loop v3.0 - Coding Agent 模式")
+    ui.ralph("  Ralph Loop v3.1 - Coding Agent 模式")
     ui.ralph("════════════════════════════════════════════════════════")
     ui.info(f"项目: {config.project_root}")
     ui.info(f"任务: {config.current_task}")
@@ -1203,7 +1255,7 @@ def main_loop():
 
 def show_status():
     """显示当前状态"""
-    ui.header("Ralph Loop v3.0 状态")
+    ui.header("Ralph Loop v3.1 状态")
 
     print("📍 当前任务:")
     if config.current_task.exists():
@@ -1275,13 +1327,14 @@ def main():
         return 0
 
     parser = argparse.ArgumentParser(
-        description='Ralph Loop v3.0 - 长时运行任务调度器',
+        description='Ralph Loop v3.1 - 长时运行任务调度器',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument('--agent', '-a', choices=['claude', 'codex', 'gemini'],
-                        default=os.environ.get('RALPH_AGENT', 'claude'),
-                        help='代理类型')
+    parser.add_argument('--agent', '-a', choices=['claude', 'codex', 'gemini', 'openclaw'],
+                        default=None,
+                        help='代理类型 (claude/codex/gemini/openclaw)')
+    parser.add_argument('--detect', action='store_true', help='自动检测代理类型')
     parser.add_argument('--init', '-i', metavar='FILE', help='初始化新任务')
     parser.add_argument('--queue', '-q', action='store_true', help='显示任务队列')
     parser.add_argument('--enqueue', '-e', metavar='FILE', help='添加任务到队列')
@@ -1298,8 +1351,31 @@ def main():
 
     args = parser.parse_args()
 
-    # 设置代理
-    config.agent = args.agent
+    # 处理 --detect 命令
+    if args.detect:
+        detected = detect_agent()
+        print(f"检测到的代理类型: {detected}")
+        print()
+        print("检测优先级:")
+        print("  1. RALPH_AGENT 环境变量")
+        print("  2. Claude Code 标记 (CLAUDE_CODE_SESSION, .claude/CLAUDE.md)")
+        print("  3. Codex CLI 标记 (CODEX_SESSION, .codexrc)")
+        print("  4. Gemini CLI 标记 (GEMINI_SESSION, .geminirc)")
+        print("  5. OpenClaw 标记 (OPENCLAW_SESSION, .openclawrc)")
+        print()
+        print("环境变量:")
+        print(f"  RALPH_AGENT: {os.environ.get('RALPH_AGENT', '(未设置)')}")
+        print(f"  CLAUDE_CODE_SESSION: {os.environ.get('CLAUDE_CODE_SESSION', '(未设置)')}")
+        print(f"  CODEX_SESSION: {os.environ.get('CODEX_SESSION', '(未设置)')}")
+        print(f"  GEMINI_SESSION: {os.environ.get('GEMINI_SESSION', '(未设置)')}")
+        print(f"  OPENCLAW_SESSION: {os.environ.get('OPENCLAW_SESSION', '(未设置)')}")
+        return 0
+
+    # 设置代理（自动检测或手动指定）
+    if args.agent:
+        config.agent = args.agent
+    else:
+        config.agent = detect_agent()
 
     # 处理命令
     if args.status:

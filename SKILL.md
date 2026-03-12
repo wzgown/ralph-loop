@@ -13,8 +13,19 @@ description: |
 license: MIT
 metadata:
   author: wzgown
-  version: 3.0.0
+  version: 3.1.0
   category: workflow-automation
+  keywords:
+    - task-scheduler
+    - incremental-development
+    - multi-agent
+    - feature-list
+    - long-running-agents
+  compatibility:
+    - claude-code
+    - codex-cli
+    - gemini-cli
+    - openclaw
 ---
 
 # Ralph Loop
@@ -69,34 +80,59 @@ metadata:
 - 只修改 `passes` 字段
 - 必须输出 `MISSION_COMPLETE`
 
-详细指令见 [skills/executor-{agent}.md](./skills/)
+详细指令见 [agents/executor-{agent}.md](./agents/)
 
-## 支持的编码代理
+## 支持的 AI 代理
 
-| 代理 | 配置文件 | 执行指令 |
-|------|----------|----------|
-| Claude Code | `CLAUDE.md` | executor-claude.md |
-| Codex CLI | `AGENTS.md` | executor-codex.md |
-| Gemini CLI | `GEMINI.md` | executor-gemini.md |
+| 代理 | 配置文件 | 执行指令 | 特点 |
+|------|----------|----------|------|
+| Claude Code | `CLAUDE.md` | executor-claude.md | XML 标签工具调用 |
+| Codex CLI | `AGENTS.md` | executor-codex.md | 自然语言命令 |
+| Gemini CLI | `GEMINI.md` | executor-gemini.md | 函数调用语法 |
+| OpenClaw | `OPENCLAW.md` | executor-openclaw.md | 自定义语法 |
+
+### Agent 自动检测
+
+Ralph Loop 支持自动检测当前运行的 AI 代理环境：
+
+**检测优先级**：
+1. `RALPH_AGENT` 环境变量
+2. Claude Code 标记 (`CLAUDE_CODE_SESSION`, `.claude/CLAUDE.md`)
+3. Codex CLI 标记 (`CODEX_SESSION`, `.codexrc`)
+4. Gemini CLI 标记 (`GEMINI_SESSION`, `.geminirc`)
+5. OpenClaw 标记 (`OPENCLAW_SESSION`, `.openclawrc`)
+6. 默认：claude
 
 ```bash
-./ralph --agent claude    # Claude Code（默认）
-./ralph --agent codex     # Codex CLI
-./ralph --agent gemini    # Gemini CLI
+# 自动检测
+./ralph
+
+# 手动指定
+./ralph --agent claude
+./ralph --agent codex
+./ralph --agent gemini
+./ralph --agent openclaw
+
+# 查看检测到的 agent
+./ralph --detect
 ```
 
 ## 目录结构
 
 ```
 .ralph/
-├── scripts/
+├── core/                 # 核心调度器
 │   ├── ralph            # Shell wrapper
 │   ├── ralph.py         # 主调度器（Python）
-│   └── stop-hook.sh     # 验证脚本
-├── skills/              # 代理执行指令
+│   ├── stop-hook.sh     # 验证脚本
+│   └── agent-detector.sh # Agent 自动检测
+├── agents/              # 代理执行指令
+│   ├── base-executor.md    # 通用执行模板
 │   ├── executor-claude.md
 │   ├── executor-codex.md
-│   └── executor-gemini.md
+│   ├── executor-gemini.md
+│   ├── executor-openclaw.md
+│   └── executor-template.md # 新 agent 模板
 ├── templates/           # 模板文件
 ├── current/             # 当前任务
 │   ├── task.md          # 任务描述
@@ -136,11 +172,53 @@ metadata:
 ## 命令参考
 
 ```bash
-ralph                    # 运行当前任务
+# 任务执行
+ralph                    # 运行当前任务（自动检测 agent）
 ralph --agent <type>     # 指定代理类型
+ralph --detect           # 显示检测到的 agent
+
+# 任务管理
 ralph --init [file]      # 初始化新任务
 ralph --new              # 创建空白任务
 ralph --status           # 显示当前状态
 ralph --features         # 显示功能清单
 ralph --tasks            # 列出所有任务
+
+# 队列管理
+ralph --queue            # 显示任务队列
+ralph --enqueue <file>   # 添加任务到队列
+ralph --next             # 获取下一个任务
+
+# 维护
+ralph --archive [name]   # 归档当前任务
+ralph --clean            # 检查工作区状态
+```
+
+## 参考文档
+
+| 文档 | 说明 |
+|------|------|
+| [references/task-planner.md](./references/task-planner.md) | Task Planner 详细流程 |
+| [references/features-format.md](./references/features-format.md) | features.json 格式规范 |
+| [references/best-practices.md](./references/best-practices.md) | 功能拆分最佳实践 |
+| [references/e2e-testing.md](./references/e2e-testing.md) | 端到端测试指南 |
+| [references/anthropic-harnesses.md](./references/anthropic-harnesses.md) | Anthropic 原始论文参考 |
+| [references/examples.md](./references/examples.md) | 使用示例 |
+
+## 添加新 Agent 支持
+
+1. 复制 `agents/executor-template.md` 为 `agents/executor-{new-agent}.md`
+2. 根据模板说明填写 agent 特定的工具调用语法
+3. 更新 `core/agent-detector.sh` 添加检测逻辑
+4. 更新 `install.sh` 添加安装支持
+5. 提交 PR 或 issue 反馈
+
+## 安装
+
+```bash
+# 本地安装
+./install.sh --agent claude
+
+# 远程安装（一键安装）
+curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh | bash -s -- --agent claude
 ```

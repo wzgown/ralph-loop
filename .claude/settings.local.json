@@ -13,7 +13,23 @@
       "Bash(mkdir -p /tmp/test-ralph-install)",
       "Read(//tmp/**)",
       "Bash(/Users/wangzhigang/workspace/wzgown/ralph-loop/install.sh --agent claude)",
-      "Bash(curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/templates/task.md 2>&1 | head -20)"
+      "Bash(curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/templates/task.md 2>&1 | head -20)",
+      "Read(//private/tmp/test-ralph3/.ralph/scripts/**)",
+      "Read(//private/tmp/test-ralph3/.ralph/skills/**)",
+      "Read(//private/tmp/test-ralph3/.ralph/templates/**)",
+      "Read(//private/tmp/test-ralph3/.ralph/references/**)",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh 2>&1 | grep -A5 \"references\\)\")",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh 2>&1 | grep -A2 '\"references\"')",
+      "Read(//private/tmp/test-ralph5/.ralph/scripts/**)",
+      "Read(//private/tmp/test-ralph5/.ralph/skills/**)",
+      "Read(//private/tmp/test-ralph5/.ralph/templates/**)",
+      "Read(//private/tmp/test-ralph5/.ralph/references/**)",
+      "Bash(claude mcp:*)",
+      "Bash(ln -sf core/ralph ralph && ls -la ralph)",
+      "Bash(./ralph --detect 2>&1 || echo \"测试完成\")",
+      "Bash(./ralph --help 2>&1 | head -30)",
+      "Bash(core/ralph --help 2>&1 | head -30)",
+      "Bash(./ralph --detect 2>&1)"
     ]
   }
 }
