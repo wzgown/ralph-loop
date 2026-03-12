@@ -1,7 +1,0 @@
-#!/bin/bash
-# Ralph Loop v3.1 - Shell wrapper
-export LANG="en_US.UTF-8"
-export LC_ALL="en_US.UTF-8"
-export PYTHONIOENCODING="utf-8"
-RALPH_DIR="$(cd "$(dirname "$0")" && pwd)"
-exec python3 "$RALPH_DIR/.ralph/core/ralph.py" "$@"
