@@ -121,11 +121,12 @@ cat "$FEATURES_FILE" | tr '\n' ' ' | sed -e 's/} *,/}\'$'\n/g' -e 's/} *{/}\'$'\
         echo ""
         echo "  验证 [$FID]: $FDESC..."
         echo "    命令: $VCMD"
+        echo "    目录: $PROJECT_ROOT"
 
         # 临时文件存储命令输出
         CMD_OUTPUT="/tmp/ralph_cmd_output_$$"
-        # 执行验证命令，捕获输出
-        if eval "$VCMD" > "$CMD_OUTPUT" 2>&1; then
+        # 执行验证命令，在项目根目录下执行，捕获输出
+        if (cd "$PROJECT_ROOT" && eval "$VCMD") > "$CMD_OUTPUT" 2>&1; then
             echo -e "    ${GREEN}✅ 通过${NC}"
             echo "pass" >> /tmp/ralph_verify_pass_$$
         else
