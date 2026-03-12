@@ -29,7 +29,9 @@
       "Bash(./ralph --detect 2>&1 || echo \"测试完成\")",
       "Bash(./ralph --help 2>&1 | head -30)",
       "Bash(core/ralph --help 2>&1 | head -30)",
-      "Bash(./ralph --detect 2>&1)"
+      "Bash(./ralph --detect 2>&1)",
+      "Bash(./install.sh --agent claude)",
+      "Bash(./install.sh --skill-only)"
     ]
   }
 }

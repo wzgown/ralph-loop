@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║  Ralph Loop - 安装脚本 v3.1                                                  ║
+# ║  Ralph Loop - 安装脚本 v3.2                                                  ║
 # ║                                                                              ║
-# ║  1. 安装脚手架到项目 .ralph/ 目录                                              ║
-# ║  2. 根据代理类型安装配置文件                                                    ║
-# ║  3. 支持 Claude Code, Codex CLI, Gemini CLI, OpenClaw                        ║
+# ║  架构设计:                                                                    ║
+# ║  - 全局 Skill: ~/.claude/skills/ralph-loop/ (脚本、模板、参考文档)             ║
+# ║  - 项目数据: .ralph/ (任务、队列、日志)                                        ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 
 set -e
@@ -20,9 +20,10 @@ NC='\033[0m'
 
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TARGET_DIR=".ralph"
+PROJECT_RALPH_DIR=".ralph"
 AGENT_TYPE=""
-AUTO_DETECT=false
+SKIP_SCAFFOLD=false
+SKIP_SKILL=false
 
 # 检测安装模式：本地安装还是远程安装
 REMOTE_REPO="https://raw.githubusercontent.com/wzgown/ralph-loop/main"
@@ -118,7 +119,13 @@ show_help() {
     echo "选项:"
     echo "  --agent, -a <type>   指定代理类型 (claude/codex/gemini/openclaw)"
     echo "  --detect, -d         自动检测代理类型"
+    echo "  --skill-only         只安装全局 Skill，不创建项目脚手架"
+    echo "  --scaffold-only      只创建项目脚手架，不安装全局 Skill"
     echo "  --help, -h           显示帮助"
+    echo ""
+    echo "架构说明:"
+    echo "  全局 Skill: ~/.claude/skills/ralph-loop/ (脚本、模板、参考文档)"
+    echo "  项目数据:   .ralph/ (任务、队列、日志)"
     echo ""
     echo "支持的代理:"
     echo "  claude    - Claude Code (Anthropic)"
@@ -127,9 +134,9 @@ show_help() {
     echo "  openclaw  - OpenClaw"
     echo ""
     echo "示例:"
-    echo "  $0 --agent claude    安装 Claude Code 支持"
-    echo "  $0 --agent codex     安装 Codex CLI 支持"
-    echo "  $0 --detect          自动检测并安装"
+    echo "  $0 --agent claude       完整安装"
+    echo "  $0 --skill-only         只更新全局 Skill"
+    echo "  $0 --scaffold-only      只创建项目脚手架"
     echo ""
     echo "远程安装:"
     echo "  curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh | bash -s -- --agent claude"
@@ -144,7 +151,16 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --detect|-d)
-            AUTO_DETECT=true
+            AGENT_TYPE=$(detect_agent)
+            echo -e "${BLUE}自动检测到代理类型: $AGENT_TYPE${NC}"
+            shift
+            ;;
+        --skill-only)
+            SKIP_SCAFFOLD=true
+            shift
+            ;;
+        --scaffold-only)
+            SKIP_SKILL=true
             shift
             ;;
         --help|-h)
@@ -155,18 +171,14 @@ while [[ $# -gt 0 ]]; do
             show_help
             ;;
         *)
-            TARGET_DIR="$1"
+            PROJECT_RALPH_DIR="$1"
             shift
             ;;
     esac
 done
 
-# 自动检测或验证代理类型
-if [ "$AUTO_DETECT" = true ]; then
-    AGENT_TYPE=$(detect_agent)
-    echo -e "${BLUE}自动检测到代理类型: $AGENT_TYPE${NC}"
-elif [ -z "$AGENT_TYPE" ]; then
-    # 默认使用 claude
+# 默认使用 claude
+if [ -z "$AGENT_TYPE" ]; then
     AGENT_TYPE="claude"
 fi
 
@@ -184,19 +196,18 @@ esac
 
 echo ""
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  Ralph Loop v3.1 安装程序${NC}"
+echo -e "${BLUE}  Ralph Loop v3.2 安装程序${NC}"
 echo -e "${BLUE}  代理类型: $AGENT_TYPE${NC}"
 echo -e "${BLUE}  安装模式: $INSTALL_MODE${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
 echo ""
 
 # ============================================================
-# 步骤 1: 检查并安装 Python 依赖
+# 步骤 1: 检查 Python 环境
 # ============================================================
-echo -e "${CYAN}[1/4] 检查 Python 环境...${NC}"
+echo -e "${CYAN}[1/3] 检查 Python 环境...${NC}"
 echo ""
 
-# 检查 Python 3
 if command -v python3 &> /dev/null; then
     PYTHON_CMD=python3
 elif command -v python &> /dev/null; then
@@ -204,296 +215,211 @@ elif command -v python &> /dev/null; then
     if [[ "$PYTHON_VERSION" =~ ^3\. ]]; then
         PYTHON_CMD=python
     else
-        echo -e "${RED}❌ 需要 Python 3.x，当前版本: $(python --version 2>&1)${NC}"
-        echo "   请安装 Python 3: https://www.python.org/downloads/"
+        echo -e "${RED}❌ 需要 Python 3.x${NC}"
         exit 1
     fi
 else
     echo -e "${RED}❌ 未找到 Python${NC}"
-    echo "   请安装 Python 3: https://www.python.org/downloads/"
     exit 1
 fi
 
 PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
 echo -e "${GREEN}  ✅ Python: $PYTHON_VERSION${NC}"
-
 echo ""
 
 # ============================================================
-# 步骤 2: 安装脚手架到项目
+# 步骤 2: 安装全局 Skill (所有代理共用)
 # ============================================================
-echo -e "${CYAN}[2/4] 安装脚手架到项目...${NC}"
-echo ""
+if [ "$SKIP_SKILL" = false ]; then
+    echo -e "${CYAN}[2/3] 安装全局 Skill...${NC}"
+    echo ""
 
-# 检查目标目录
-if [ -d "$TARGET_DIR" ]; then
-    echo -e "${YELLOW}⚠️  目录 $TARGET_DIR 已存在${NC}"
-    # 检查是否在交互式终端运行
-    if [ -t 0 ]; then
-        read -p "是否覆盖? (y/N) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "安装已取消"
-            exit 1
+    # 全局 Skill 目录
+    GLOBAL_SKILL_DIR="$HOME/.claude/skills/ralph-loop"
+    mkdir -p "$GLOBAL_SKILL_DIR"
+
+    echo -e "${BLUE}  目标: $GLOBAL_SKILL_DIR${NC}"
+
+    # 复制核心脚本
+    echo -e "${BLUE}  复制核心脚本...${NC}"
+    mkdir -p "$GLOBAL_SKILL_DIR/core"
+    fetch_file "core/stop-hook.sh" "$GLOBAL_SKILL_DIR/core/stop-hook.sh"
+    fetch_file "core/ralph.py" "$GLOBAL_SKILL_DIR/core/ralph.py"
+    fetch_file "core/agent-detector.sh" "$GLOBAL_SKILL_DIR/core/agent-detector.sh"
+    chmod +x "$GLOBAL_SKILL_DIR/core/"*.sh "$GLOBAL_SKILL_DIR/core/ralph.py" 2>/dev/null || true
+
+    # 复制代理执行指令
+    echo -e "${BLUE}  复制代理执行指令...${NC}"
+    AGENT_FILES="base-executor.md executor-claude.md executor-codex.md executor-gemini.md executor-openclaw.md executor-template.md"
+    fetch_dir "agents" "$GLOBAL_SKILL_DIR/agents" "$AGENT_FILES"
+
+    # 复制模板
+    echo -e "${BLUE}  复制模板文件...${NC}"
+    TEMPLATE_FILES="task-template.md features-template.json init-template.sh progress-template.md verify.sh"
+    fetch_dir "templates" "$GLOBAL_SKILL_DIR/templates" "$TEMPLATE_FILES"
+
+    # 复制 Skill 定义
+    fetch_file "SKILL.md" "$GLOBAL_SKILL_DIR/SKILL.md"
+
+    # 复制参考文档
+    REFERENCE_FILES="examples.md features-format.md task-planner.md best-practices.md e2e-testing.md anthropic-harnesses.md"
+    fetch_dir "references" "$GLOBAL_SKILL_DIR/references" "$REFERENCE_FILES"
+
+    echo -e "${GREEN}  ✅ 全局 Skill 安装完成${NC}"
+    echo ""
+else
+    echo -e "${CYAN}[2/3] 跳过全局 Skill 安装 (--scaffold-only)${NC}"
+    echo ""
+fi
+
+# ============================================================
+# 步骤 3: 创建项目脚手架 (只有运行时数据)
+# ============================================================
+if [ "$SKIP_SCAFFOLD" = false ]; then
+    echo -e "${CYAN}[3/3] 创建项目脚手架...${NC}"
+    echo ""
+
+    echo -e "${BLUE}  目标: $PROJECT_RALPH_DIR/${NC}"
+
+    # 检查目标目录
+    if [ -d "$PROJECT_RALPH_DIR" ]; then
+        echo -e "${YELLOW}  ⚠️  目录已存在${NC}"
+        if [ -t 0 ]; then
+            read -p "  是否覆盖? (y/N) " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "  安装已取消"
+                exit 1
+            fi
+        else
+            echo -e "${BLUE}  非交互模式，保留现有数据...${NC}"
         fi
-    else
-        echo -e "${BLUE}  非交互模式，自动覆盖...${NC}"
     fi
-    rm -rf "$TARGET_DIR"
-fi
 
-# 创建目录结构（新结构：core/ 和 agents/）
-echo -e "${BLUE}  创建目录结构...${NC}"
-mkdir -p "$TARGET_DIR"/{core,agents,templates,current,queue,tasks,logs,references,requirements}
+    # 创建运行时目录结构（不包含脚本，只有数据）
+    mkdir -p "$PROJECT_RALPH_DIR"/{current,queue,tasks,logs,requirements}
 
-# 复制/下载核心脚本
-echo -e "${BLUE}  复制核心脚本...${NC}"
-if [ "$INSTALL_MODE" = "remote" ]; then
-    echo -e "${BLUE}  (远程安装模式，从 GitHub 下载文件...)${NC}"
-fi
+    # 创建当前任务目录的默认文件（如果不存在）
+    if [ ! -f "$PROJECT_RALPH_DIR/current/task.md" ]; then
+        cat > "$PROJECT_RALPH_DIR/current/task.md" << 'EOF'
+# 任务描述
 
-fetch_file "core/stop-hook.sh" "$TARGET_DIR/core/stop-hook.sh"
-fetch_file "core/ralph" "$TARGET_DIR/core/ralph"
-fetch_file "core/ralph.py" "$TARGET_DIR/core/ralph.py"
-fetch_file "core/agent-detector.sh" "$TARGET_DIR/core/agent-detector.sh"
-chmod +x "$TARGET_DIR/core/"*.sh "$TARGET_DIR/core/ralph" "$TARGET_DIR/core/ralph.py" 2>/dev/null || true
+## 背景
 
-# 复制/下载代理执行指令
-echo -e "${BLUE}  复制代理执行指令...${NC}"
-AGENT_FILES="base-executor.md executor-claude.md executor-codex.md executor-gemini.md executor-openclaw.md executor-template.md"
-fetch_dir "agents" "$TARGET_DIR/agents" "$AGENT_FILES"
+<!-- 描述任务的背景和上下文 -->
 
-# 复制/下载模板
-echo -e "${BLUE}  复制模板文件...${NC}"
-TEMPLATE_FILES="task-template.md features-template.json init-template.sh progress-template.md verify.sh"
-fetch_dir "templates" "$TARGET_DIR/templates" "$TEMPLATE_FILES"
+## 需求
 
-# 复制/下载主 skill 文件和参考文档
-fetch_file "SKILL.md" "$TARGET_DIR/SKILL.md"
+| ID | 需求 | 来源 |
+|----|------|------|
+| R1 | | |
 
-REFERENCE_FILES="examples.md features-format.md task-planner.md best-practices.md e2e-testing.md anthropic-harnesses.md"
-fetch_dir "references" "$TARGET_DIR/references" "$REFERENCE_FILES"
+## 成功标准
 
-# 创建便捷命令
-echo -e "${BLUE}  创建便捷命令...${NC}"
-cat > ralph << 'RALPH_SCRIPT'
+- [ ]
+
+## 约束
+
+-
+
+EOF
+    fi
+
+    if [ ! -f "$PROJECT_RALPH_DIR/current/features.json" ]; then
+        cat > "$PROJECT_RALPH_DIR/current/features.json" << 'EOF'
+[
+  {
+    "id": "F001",
+    "description": "第一个功能",
+    "requirement_refs": [],
+    "steps": ["验证步骤"],
+    "verify_command": "echo '验证通过'",
+    "passes": false
+  }
+]
+EOF
+    fi
+
+    if [ ! -f "$PROJECT_RALPH_DIR/current/progress.md" ]; then
+        touch "$PROJECT_RALPH_DIR/current/progress.md"
+    fi
+
+    # 创建便捷命令（指向全局 Skill）
+    cat > ralph << 'RALPH_SCRIPT'
 #!/bin/bash
-# Ralph Loop v3.1 - Shell wrapper
+# Ralph Loop v3.2 - Shell wrapper
+# 指向全局 Skill 目录的核心脚本
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
 export PYTHONIOENCODING="utf-8"
-RALPH_DIR="$(cd "$(dirname "$0")" && pwd)"
-exec python3 "$RALPH_DIR/.ralph/core/ralph.py" "$@"
+
+# 项目目录
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+RALPH_DATA_DIR="$PROJECT_DIR/.ralph"
+
+# 全局 Skill 目录
+GLOBAL_SKILL_DIR="$HOME/.claude/skills/ralph-loop"
+
+# 检查全局 Skill 是否存在
+if [ ! -f "$GLOBAL_SKILL_DIR/core/ralph.py" ]; then
+    echo "❌ Ralph Loop 全局 Skill 未安装"
+    echo "   请运行: curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh | bash"
+    exit 1
+fi
+
+# 传递项目数据目录给 Python 脚本
+export RALPH_DATA_DIR="$RALPH_DATA_DIR"
+exec python3 "$GLOBAL_SKILL_DIR/core/ralph.py" "$@"
 RALPH_SCRIPT
-chmod +x ralph
+    chmod +x ralph
 
-echo -e "${GREEN}  ✅ 脚手架安装完成${NC}"
-echo ""
-
-# ============================================================
-# 步骤 3: 安装代理配置
-# ============================================================
-echo -e "${CYAN}[3/4] 安装代理配置 ($AGENT_TYPE)...${NC}"
-echo ""
-
-case "$AGENT_TYPE" in
-    claude)
-        CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
-        SKILL_NAME="ralph-loop"
-        SKILL_DIR="$CLAUDE_SKILLS_DIR/$SKILL_NAME"
-
-        mkdir -p "$CLAUDE_SKILLS_DIR"
-
-        if [ -d "$SKILL_DIR" ]; then
-            echo -e "${YELLOW}  ⚠️  Skill 已存在，更新中...${NC}"
-            rm -rf "$SKILL_DIR"
-        fi
-
-        mkdir -p "$SKILL_DIR" "$SKILL_DIR/references" "$SKILL_DIR/agents"
-        fetch_file "SKILL.md" "$SKILL_DIR/SKILL.md"
-        fetch_dir "agents" "$SKILL_DIR/agents" "$AGENT_FILES"
-        fetch_dir "references" "$SKILL_DIR/references" "$REFERENCE_FILES"
-
-        echo -e "${GREEN}  ✅ Claude Code Skill 安装完成${NC}"
-        echo -e "${BLUE}  位置: $SKILL_DIR${NC}"
-        ;;
-
-    codex)
-        AGENTS_FILE="AGENTS.md"
-
-        if [ -f "$AGENTS_FILE" ]; then
-            echo -e "${YELLOW}  ⚠️  $AGENTS_FILE 已存在，追加配置...${NC}"
-            echo "" >> "$AGENTS_FILE"
-            echo "---" >> "$AGENTS_FILE"
-            echo "" >> "$AGENTS_FILE"
-        fi
-
-        cat >> "$AGENTS_FILE" << 'EOF'
-# Ralph Loop 任务调度
-
-使用 `.ralph/SKILL.md` 作为 Ralph Loop 任务调度指南。
-
-## 工作流程
-
-1. 读取 `.ralph/current/features.json`
-2. 选择未完成的功能
-3. 实现并测试
-4. 更新 passes 字段
-5. Git 提交
-6. 输出 MISSION_COMPLETE
-
-## 执行指令
-
-详细执行指令见 `.ralph/agents/executor-codex.md`
-
-EOF
-
-        echo -e "${GREEN}  ✅ Codex CLI 配置完成${NC}"
-        echo -e "${BLUE}  配置文件: $AGENTS_FILE${NC}"
-        ;;
-
-    gemini)
-        GEMINI_FILE="GEMINI.md"
-
-        if [ -f "$GEMINI_FILE" ]; then
-            echo -e "${YELLOW}  ⚠️  $GEMINI_FILE 已存在，追加配置...${NC}"
-            echo "" >> "$GEMINI_FILE"
-            echo "---" >> "$GEMINI_FILE"
-            echo "" >> "$GEMINI_FILE"
-        fi
-
-        cat >> "$GEMINI_FILE" << 'EOF'
-# Ralph Loop 任务调度
-
-使用 `.ralph/SKILL.md` 作为 Ralph Loop 任务调度指南。
-
-## 工作流程
-
-1. read_file .ralph/current/features.json
-2. 选择未完成的功能
-3. 使用 replace 实现代码
-4. !npm run test
-5. replace features.json 更新 passes
-6. !git commit
-7. MISSION_COMPLETE
-
-## 执行指令
-
-详细执行指令见 `.ralph/agents/executor-gemini.md`
-
-EOF
-
-        echo -e "${GREEN}  ✅ Gemini CLI 配置完成${NC}"
-        echo -e "${BLUE}  配置文件: $GEMINI_FILE${NC}"
-        ;;
-
-    openclaw)
-        OPENCLAW_FILE="OPENCLAW.md"
-
-        if [ -f "$OPENCLAW_FILE" ]; then
-            echo -e "${YELLOW}  ⚠️  $OPENCLAW_FILE 已存在，追加配置...${NC}"
-            echo "" >> "$OPENCLAW_FILE"
-            echo "---" >> "$OPENCLAW_FILE"
-            echo "" >> "$OPENCLAW_FILE"
-        fi
-
-        cat >> "$OPENCLAW_FILE" << 'EOF'
-# Ralph Loop 任务调度
-
-使用 `.ralph/SKILL.md` 作为 Ralph Loop 任务调度指南。
-
-## 工作流程
-
-1. 读取 .ralph/current/features.json
-2. 选择未完成的功能
-3. 实现代码
-4. 运行测试
-5. 更新 passes 字段
-6. Git 提交
-7. MISSION_COMPLETE
-
-## 执行指令
-
-详细执行指令见 `.ralph/agents/executor-openclaw.md`
-
-EOF
-
-        echo -e "${GREEN}  ✅ OpenClaw 配置完成${NC}"
-        echo -e "${BLUE}  配置文件: $OPENCLAW_FILE${NC}"
-        ;;
-esac
-
-echo ""
+    echo -e "${GREEN}  ✅ 项目脚手架创建完成${NC}"
+    echo ""
+else
+    echo -e "${CYAN}[3/3] 跳过项目脚手架 (--skill-only)${NC}"
+    echo ""
+fi
 
 # ============================================================
 # 步骤 4: 显示完成信息
 # ============================================================
-echo -e "${CYAN}[4/4] 安装完成${NC}"
-echo ""
-
 echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  🎉 Ralph Loop v3.1 安装完成！${NC}"
+echo -e "${GREEN}  🎉 Ralph Loop v3.2 安装完成！${NC}"
 echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
 echo ""
-echo "已安装:"
-echo ""
-echo "  🐍 Python 环境:"
-echo "     $PYTHON_VERSION"
-echo ""
-echo "  📁 项目脚手架:"
-echo "     $TARGET_DIR/"
-echo "     ├── SKILL.md              # 主技能文件"
-echo "     ├── core/                 # 核心调度器"
-echo "     │   ├── ralph             # Shell wrapper"
-echo "     │   ├── ralph.py          # Python 主程序 (v3.1)"
-echo "     │   ├── stop-hook.sh      # 验证脚本"
-echo "     │   └── agent-detector.sh # Agent 自动检测"
-echo "     ├── agents/               # 代理执行指令"
-echo "     │   ├── base-executor.md  # 通用执行模板"
-echo "     │   ├── executor-claude.md"
-echo "     │   ├── executor-codex.md"
-echo "     │   ├── executor-gemini.md"
-echo "     │   └── executor-openclaw.md"
-echo "     ├── references/           # 参考文档"
-echo "     │   ├── best-practices.md"
-echo "     │   ├── e2e-testing.md"
-echo "     │   └── anthropic-harnesses.md"
-echo "     ├── templates/            # 模板文件"
-echo "     ├── current/              # 当前任务"
-echo "     ├── queue/                # 任务队列"
-echo "     ├── tasks/                # 历史任务归档"
-echo "     └── logs/                 # 循环日志"
-echo ""
 
-case "$AGENT_TYPE" in
-    claude)
-        echo "  📦 Claude Code Skill:"
-        echo "     ~/.claude/skills/ralph-loop/"
-        ;;
-    codex)
-        echo "  📦 Codex CLI 配置:"
-        echo "     AGENTS.md"
-        ;;
-    gemini)
-        echo "  📦 Gemini CLI 配置:"
-        echo "     GEMINI.md"
-        ;;
-    openclaw)
-        echo "  📦 OpenClaw 配置:"
-        echo "     OPENCLAW.md"
-        ;;
-esac
+if [ "$SKIP_SKILL" = false ]; then
+    echo "全局 Skill:"
+    echo "  📦 ~/.claude/skills/ralph-loop/"
+    echo "     ├── SKILL.md           # Skill 定义"
+    echo "     ├── core/              # 核心脚本 (全局共享)"
+    echo "     │   ├── ralph.py"
+    echo "     │   ├── stop-hook.sh"
+    echo "     │   └── agent-detector.sh"
+    echo "     ├── agents/            # 代理执行指令"
+    echo "     ├── templates/         # 模板文件"
+    echo "     └── references/        # 参考文档"
+    echo ""
+fi
 
-echo ""
-echo "快速开始:"
-echo "  ./ralph --new              # 创建新任务"
-echo "  ./ralph --init [file]      # 初始化任务"
-echo "  ./ralph                    # 运行任务（自动检测 agent）"
-echo "  ./ralph --detect           # 显示检测到的 agent"
-echo ""
-echo "切换代理:"
-echo "  ./ralph --agent claude     # 使用 Claude Code"
-echo "  ./ralph --agent codex      # 使用 Codex CLI"
-echo "  ./ralph --agent gemini     # 使用 Gemini CLI"
-echo "  ./ralph --agent openclaw   # 使用 OpenClaw"
+if [ "$SKIP_SCAFFOLD" = false ]; then
+    echo "项目数据:"
+    echo "  📁 .ralph/"
+    echo "     ├── current/           # 当前任务"
+    echo "     │   ├── task.md"
+    echo "     │   ├── features.json"
+    echo "     │   └── progress.md"
+    echo "     ├── queue/             # 任务队列"
+    echo "     ├── tasks/             # 历史归档"
+    echo "     └── logs/              # 日志"
+    echo ""
+    echo "快速开始:"
+    echo "  ./ralph --new              # 创建新任务"
+    echo "  ./ralph                    # 运行任务"
+    echo "  ./ralph --status           # 查看状态"
+    echo ""
+fi
+
+echo "升级 Skill:"
+echo "  ./install.sh --skill-only  # 只更新全局 Skill"
 echo ""

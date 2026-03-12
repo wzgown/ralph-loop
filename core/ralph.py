@@ -62,16 +62,27 @@ class Colors:
 
 @dataclass
 class Config:
-    """Ralph Loop 配置"""
-    ralph_dir: Path = None
-    project_root: Path = None
-    scripts_dir: Path = None
+    """
+    Ralph Loop v3.2 配置
+
+    架构设计:
+    - 全局 Skill 目录: ~/.claude/skills/ralph-loop/ (脚本、模板、参考文档)
+    - 项目数据目录: .ralph/ (任务、队列、日志)
+    """
+    # 全局 Skill 目录 (脚本、模板等)
+    skill_dir: Path = None
+    core_dir: Path = None
     templates_dir: Path = None
+    agents_dir: Path = None
+    references_dir: Path = None
+
+    # 项目数据目录 (运行时数据)
+    data_dir: Path = None
+    project_root: Path = None
     current_dir: Path = None
     queue_dir: Path = None
     tasks_dir: Path = None
     logs_dir: Path = None
-    skills_dir: Path = None
 
     # 文件路径
     current_task: Path = None
@@ -90,28 +101,38 @@ class Config:
     agent: str = 'claude'
 
     def __post_init__(self):
-        if self.ralph_dir is None:
-            self.scripts_dir = Path(__file__).parent.resolve()
-            self.ralph_dir = self.scripts_dir.parent
-        self.project_root = self.ralph_dir.parent
-        self.templates_dir = self.ralph_dir / 'templates'
-        self.current_dir = self.ralph_dir / 'current'
-        self.queue_dir = self.ralph_dir / 'queue'
-        self.tasks_dir = self.ralph_dir / 'tasks'
-        self.logs_dir = self.ralph_dir / 'logs'
-        self.agents_dir = self.ralph_dir / 'agents'
-        self.skills_dir = self.agents_dir  # 向后兼容
+        # 1. 确定 Skill 目录 (脚本所在位置)
+        self.core_dir = Path(__file__).parent.resolve()
+        self.skill_dir = self.core_dir.parent
+        self.templates_dir = self.skill_dir / 'templates'
+        self.agents_dir = self.skill_dir / 'agents'
+        self.references_dir = self.skill_dir / 'references'
 
+        # 2. 确定项目数据目录
+        if os.environ.get('RALPH_DATA_DIR'):
+            self.data_dir = Path(os.environ['RALPH_DATA_DIR']).resolve()
+        else:
+            # 向后兼容: 查找当前目录的 .ralph/
+            cwd = Path.cwd()
+            self.data_dir = cwd / '.ralph'
+
+        self.project_root = self.data_dir.parent
+        self.current_dir = self.data_dir / 'current'
+        self.queue_dir = self.data_dir / 'queue'
+        self.tasks_dir = self.data_dir / 'tasks'
+        self.logs_dir = self.data_dir / 'logs'
+
+        # 3. 设置文件路径
         self.current_task = self.current_dir / 'task.md'
         self.current_features = self.current_dir / 'features.json'
         self.current_progress = self.current_dir / 'progress.md'
         self.current_init = self.current_dir / 'init.sh'
         self.current_verify = self.current_dir / 'verify.sh'
         self.task_queue = self.queue_dir / 'task-queue.json'
-        self.stop_hook = self.scripts_dir / 'stop-hook.sh'
+        self.stop_hook = self.core_dir / 'stop-hook.sh'
         self.feature_retries = self.logs_dir / 'feature_retries.json'
 
-        # 确保目录存在
+        # 4. 确保数据目录存在
         for d in [self.current_dir, self.queue_dir, self.tasks_dir, self.logs_dir]:
             d.mkdir(parents=True, exist_ok=True)
 
@@ -482,20 +503,46 @@ def get_skipped_features(features: List[Dict]) -> List[str]:
 # ============================================================
 
 def load_features() -> Optional[Dict]:
-    """加载功能清单"""
+    """
+    加载功能清单
+
+    支持两种格式：
+    1. 数组格式：[{...}, {...}]
+    2. 对象格式：{"features": [{...}, {...}]}
+
+    内部统一转换为对象格式处理
+    """
     if not config.current_features.exists():
         return None
     try:
         with open(config.current_features, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+        # 兼容两种格式：统一转换为对象格式
+        if isinstance(data, list):
+            return {"features": data, "_is_array_format": True}
+        return data
     except Exception as e:
         ui.err(f"加载功能清单失败: {e}")
         return None
 
 def save_features(data: Dict):
-    """保存功能清单"""
+    """
+    保存功能清单
+
+    如果原始格式是数组，保存时也使用数组格式
+    """
+    # 如果原始是数组格式，保存时也使用数组格式
+    if data.get('_is_array_format'):
+        features = data.get('features', [])
+        # 移除内部标记
+        for f in features:
+            f.pop('_is_array_format', None)
+        data_to_save = features
+    else:
+        data_to_save = data
+
     with open(config.current_features, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(data_to_save, f, ensure_ascii=False, indent=2)
 
 def get_next_pending_feature(features: List[Dict]) -> Optional[Dict]:
     """获取下一个待处理功能"""
