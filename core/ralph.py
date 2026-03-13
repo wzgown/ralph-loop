@@ -82,7 +82,6 @@ class Config:
     data_dir: Path = None
     project_root: Path = None
     current_dir: Path = None
-    queue_dir: Path = None
     tasks_dir: Path = None
     logs_dir: Path = None
 
@@ -90,9 +89,6 @@ class Config:
     current_task: Path = None
     current_features: Path = None
     current_progress: Path = None
-    current_init: Path = None
-    current_verify: Path = None
-    task_queue: Path = None
     stop_hook: Path = None
     feature_retries: Path = None
 
@@ -114,13 +110,11 @@ class Config:
         if os.environ.get('RALPH_DATA_DIR'):
             self.data_dir = Path(os.environ['RALPH_DATA_DIR']).resolve()
         else:
-            # 向后兼容: 查找当前目录的 .ralph/
             cwd = Path.cwd()
             self.data_dir = cwd / '.ralph'
 
         self.project_root = self.data_dir.parent
         self.current_dir = self.data_dir / 'current'
-        self.queue_dir = self.data_dir / 'queue'
         self.tasks_dir = self.data_dir / 'tasks'
         self.logs_dir = self.data_dir / 'logs'
 
@@ -128,12 +122,11 @@ class Config:
         self.current_task = self.current_dir / 'task.md'
         self.current_features = self.current_dir / 'features.json'
         self.current_progress = self.current_dir / 'progress.md'
-        self.task_queue = self.queue_dir / 'task-queue.json'
         self.stop_hook = self.core_dir / 'stop-hook.sh'
         self.feature_retries = self.logs_dir / 'feature_retries.json'
 
         # 4. 确保数据目录存在
-        for d in [self.current_dir, self.queue_dir, self.tasks_dir, self.logs_dir]:
+        for d in [self.current_dir, self.tasks_dir, self.logs_dir]:
             d.mkdir(parents=True, exist_ok=True)
 
 
@@ -417,42 +410,21 @@ class RalphUI:
 Ralph Loop v3.4 - 长时运行任务调度器
 
 用法:
-  ralph                          运行当前任务（增量模式，自动检测 agent）
-  ralph --agent <type>           指定代理类型 (claude/codex/gemini/openclaw)
-  ralph --detect                 显示检测到的 agent 类型
-  ralph --init                   初始化新任务（Initializer Agent 模式）
-  ralph --queue                  显示任务队列
-  ralph --enqueue <file>         添加任务到队列
-  ralph --dequeue <id>           从队列移除任务
-  ralph --next                   从队列获取下一个任务
-  ralph --status                 显示当前状态
-  ralph --features               显示功能清单
-  ralph --progress               显示进度日志
-  ralph --tasks                  列出所有任务
-  ralph --archive [name]         归档当前任务
-  ralph --reset                  重置当前任务
-  ralph --clean                  清理工作区（确保干净状态）
-  ralph --help                   显示帮助
+  ralph                  运行当前任务
+  ralph --status         显示当前状态
+  ralph --features       显示功能清单
+  ralph --archive [name] 归档当前任务
+  ralph --help           显示帮助
 
-代理类型:
-  --agent claude    Claude Code (Anthropic) - 默认
-  --agent codex     Codex CLI (OpenAI)
-  --agent gemini    Gemini CLI (Google)
-  --agent openclaw  OpenClaw
-
-自动检测:
-  --detect          显示检测到的代理类型和环境信息
-  (默认自动检测，无需指定 --agent)
-
-工作模式:
-  1. Initializer Agent (--init): 设置环境，创建 features.json
-  2. Coding Agent (默认): 增量式工作，每次一个功能，保持干净状态
+文件:
+  .ralph/current/task.md       任务描述
+  .ralph/current/features.json 功能清单
+  .ralph/current/progress.md   进度日志
 
 参数:
   MAX_ITERATIONS=10       最大循环次数
   MAX_FEATURE_RETRIES=3   单个功能最大重试次数
   CLAUDE_TIMEOUT=1800     单次执行超时(秒)
-  RALPH_AGENT=claude      默认代理类型
 """
         self._print_box(title="帮助", content=help_text.strip(), border_color=Colors.BLUE)
 
@@ -1062,8 +1034,7 @@ def main_loop():
     # 检查是否有任务
     if not config.current_task.exists():
         ui.err("无当前任务")
-        ui.info("创建新任务: ralph --init <task-file>")
-        ui.info("添加到队列: ralph --enqueue <task-file>")
+        ui.info("请先创建 .ralph/current/task.md")
         return 1
 
     # 检查功能清单
@@ -1081,7 +1052,7 @@ def main_loop():
     passed_features = sum(1 for f in features if f.get('passes', False))
 
     ui.ralph("════════════════════════════════════════════════════════")
-    ui.ralph("  Ralph Loop v3.1 - Coding Agent 模式")
+    ui.ralph("  Ralph Loop v3.4")
     ui.ralph("════════════════════════════════════════════════════════")
     ui.info(f"项目: {config.project_root}")
     ui.info(f"任务: {config.current_task}")
@@ -1314,55 +1285,18 @@ def main():
         return 0
 
     parser = argparse.ArgumentParser(
-        description='Ralph Loop v3.1 - 长时运行任务调度器',
+        description='Ralph Loop v3.4 - 长时运行任务调度器',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument('--agent', '-a', choices=['claude', 'codex', 'gemini', 'openclaw'],
-                        default=None,
-                        help='代理类型 (claude/codex/gemini/openclaw)')
-    parser.add_argument('--detect', action='store_true', help='自动检测代理类型')
-    parser.add_argument('--init', '-i', metavar='FILE', help='初始化新任务')
-    parser.add_argument('--queue', '-q', action='store_true', help='显示任务队列')
-    parser.add_argument('--enqueue', '-e', metavar='FILE', help='添加任务到队列')
-    parser.add_argument('--dequeue', '-d', metavar='ID', help='从队列移除任务')
-    parser.add_argument('--next', '-n', action='store_true', help='获取下一个任务')
     parser.add_argument('--status', '-s', action='store_true', help='显示当前状态')
     parser.add_argument('--features', '-f', action='store_true', help='显示功能清单')
-    parser.add_argument('--progress', '-p', action='store_true', help='显示进度日志')
-    parser.add_argument('--tasks', '-l', action='store_true', help='列出所有任务')
     parser.add_argument('--archive', metavar='NAME', nargs='?', const='manual', help='归档当前任务')
-    parser.add_argument('--reset', '-r', action='store_true', help='重置当前任务')
-    parser.add_argument('--clean', '-c', action='store_true', help='检查工作区状态')
-    parser.add_argument('--new', action='store_true', help='创建新任务')
 
     args = parser.parse_args()
 
-    # 处理 --detect 命令
-    if args.detect:
-        detected = detect_agent()
-        print(f"检测到的代理类型: {detected}")
-        print()
-        print("检测优先级:")
-        print("  1. RALPH_AGENT 环境变量")
-        print("  2. Claude Code 标记 (CLAUDE_CODE_SESSION, .claude/CLAUDE.md)")
-        print("  3. Codex CLI 标记 (CODEX_SESSION, .codexrc)")
-        print("  4. Gemini CLI 标记 (GEMINI_SESSION, .geminirc)")
-        print("  5. OpenClaw 标记 (OPENCLAW_SESSION, .openclawrc)")
-        print()
-        print("环境变量:")
-        print(f"  RALPH_AGENT: {os.environ.get('RALPH_AGENT', '(未设置)')}")
-        print(f"  CLAUDE_CODE_SESSION: {os.environ.get('CLAUDE_CODE_SESSION', '(未设置)')}")
-        print(f"  CODEX_SESSION: {os.environ.get('CODEX_SESSION', '(未设置)')}")
-        print(f"  GEMINI_SESSION: {os.environ.get('GEMINI_SESSION', '(未设置)')}")
-        print(f"  OPENCLAW_SESSION: {os.environ.get('OPENCLAW_SESSION', '(未设置)')}")
-        return 0
-
-    # 设置代理（自动检测或手动指定）
-    if args.agent:
-        config.agent = args.agent
-    else:
-        config.agent = detect_agent()
+    # 自动检测代理
+    config.agent = detect_agent()
 
     # 处理命令
     if args.status:
@@ -1373,80 +1307,8 @@ def main():
         show_features()
         return 0
 
-    if args.progress:
-        if config.current_progress.exists():
-            with open(config.current_progress, 'r', encoding='utf-8') as f:
-                print(f.read())
-        else:
-            print("无进度日志")
-        return 0
-
-    if args.tasks:
-        ui.header("任务列表")
-        print()
-
-        # 当前任务
-        if config.current_task.exists():
-            print("📍 当前任务:")
-            task_name = ""
-            with open(config.current_task, 'r', encoding='utf-8') as f:
-                for line in f:
-                    if line.startswith('# 任务'):
-                        task_name = line.replace('# 任务', '').replace('#', '').strip()
-                        break
-            print(f"   名称: {task_name or '未命名'}")
-            print()
-
-        # 历史任务
-        if config.tasks_dir.exists():
-            dirs = sorted(config.tasks_dir.iterdir(), reverse=True)
-            if dirs:
-                print("📁 历史任务:")
-                for d in dirs:
-                    if d.is_dir():
-                        summary_file = d / 'SUMMARY.md'
-                        status = ""
-                        if summary_file.exists():
-                            with open(summary_file, 'r', encoding='utf-8') as f:
-                                for line in f:
-                                    if line.startswith('- 状态:'):
-                                        status = line.replace('- 状态:', '').strip()
-                                        break
-                        print(f"   • {d.name} {status}")
-        return 0
-
-    if args.init:
-        init_task(Path(args.init))
-        return 0
-
-    if args.new:
-        if config.current_task.exists():
-            ui.info("归档现有任务...")
-            archive_task(0, "new-task")
-        template = config.templates_dir / 'task-template.md'
-        shutil.copy2(template, config.current_task)
-        ui.ok(f"已创建新任务: {config.current_task}")
-        ui.info("编辑任务后运行: ralph --init")
-        return 0
-
-    if args.clean:
-        if git_has_changes():
-            ui.warn("工作区有未提交的更改")
-            print(git_status())
-        else:
-            ui.ok("工作区状态干净")
-        return 0
-
     if args.archive is not None:
         archive_task(0, args.archive or "manual")
-        return 0
-
-    if args.queue:
-        if config.task_queue.exists():
-            with open(config.task_queue, 'r', encoding='utf-8') as f:
-                print(f.read())
-        else:
-            print("队列为空")
         return 0
 
     # 默认：运行主循环

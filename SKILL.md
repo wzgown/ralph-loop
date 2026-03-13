@@ -203,29 +203,13 @@ metadata:
 ## 命令参考
 
 ```bash
-# 任务执行
-ralph                    # 运行当前任务（自动检测 agent）
-ralph --agent <type>     # 指定代理类型
-ralph --detect           # 显示检测到的 agent
-
-# 任务管理
-ralph --init [file]      # 初始化新任务
-ralph --new              # 创建空白任务
+ralph                    # 运行当前任务
 ralph --status           # 显示当前状态
 ralph --features         # 显示功能清单
-ralph --tasks            # 列出所有任务
-
-# 队列管理
-ralph --queue            # 显示任务队列
-ralph --enqueue <file>   # 添加任务到队列
-ralph --next             # 获取下一个任务
-
-# 维护
 ralph --archive [name]   # 归档当前任务
-ralph --clean            # 检查工作区状态
 ```
 
-## 安装与升级
+## 安装
 
 ```bash
 # 安装

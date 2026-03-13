@@ -26,7 +26,6 @@ Ralph Loop 是一个 **Claude Code Skill**，基于 Anthropic "Effective harness
 │   ├── task.md
 │   ├── features.json           # 功能清单 ⬅️ 核心
 │   └── progress.md
-├── queue/                      # 任务队列
 ├── tasks/                      # 历史归档
 └── logs/                       # 日志
 ```
