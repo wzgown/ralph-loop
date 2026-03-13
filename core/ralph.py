@@ -839,9 +839,11 @@ def run_stop_hook(log_file: Path, iteration: int) -> bool:
 
     hook_log = log_file.with_suffix('.log.hook')
 
-    # 设置环境变量传递 iteration
+    # 设置环境变量
     env = os.environ.copy()
     env['RALPH_ITERATION'] = str(iteration)
+    env['RALPH_DATA_DIR'] = str(config.data_dir)
+    env['RALPH_PROJECT_ROOT'] = str(config.project_root)
 
     try:
         with open(hook_log, 'w', encoding='utf-8') as f:

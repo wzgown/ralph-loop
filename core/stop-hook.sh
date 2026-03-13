@@ -6,11 +6,16 @@
 # 1. 检查 AI 是否输出了 MISSION_COMPLETE
 # 2. 检查代码编译/语法
 # 3. 运行当前功能的 verify_command
+#
+# 环境变量（由 ralph.py 传入）：
+# - RALPH_DATA_DIR: 项目数据目录 (.ralph/)
+# - RALPH_PROJECT_ROOT: 项目根目录
+# - RALPH_ITERATION: 当前迭代 ID
 
-RALPH_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PROJECT_ROOT="$(dirname "$RALPH_DIR")"
-CURRENT_DIR="$RALPH_DIR/current"
-LOGS_DIR="$RALPH_DIR/logs"
+DATA_DIR="${RALPH_DATA_DIR:?RALPH_DATA_DIR 未设置}"
+PROJECT_ROOT="${RALPH_PROJECT_ROOT:?RALPH_PROJECT_ROOT 未设置}"
+CURRENT_DIR="$DATA_DIR/current"
+LOGS_DIR="$DATA_DIR/logs"
 
 FEATURES_FILE="$CURRENT_DIR/features.json"
 RALPH_ITERATION="${RALPH_ITERATION:-$$}"
