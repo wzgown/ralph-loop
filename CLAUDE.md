@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Ralph Loop 是一个 **Claude Code Skill**，基于 Anthropic "Effective harnesses for long-running agents" 最佳实践的长时运行任务调度器。
 
-## v3.3 架构
+## v3.4 架构
 
 **全局 Skill + 项目数据分离：**
 
@@ -31,11 +31,14 @@ Ralph Loop 是一个 **Claude Code Skill**，基于 Anthropic "Effective harness
 └── logs/                       # 日志
 ```
 
-## v3.3 改进
+## v3.4 职责分离
 
-- **执行 Prompt 精简**：移除规划阶段文档，只保留执行必需内容
-- **动态工作流程**：根据功能类型（前端/后端）调整工作流程
-- **移除无关强调**：后端任务不再强调浏览器工具
+| 组件 | 职责 |
+|------|------|
+| **Core 脚本** | 调度、收集上下文、验证完成信号 |
+| **Skill (AI)** | 规划工作流程、决定验证方式、组织需求文档 |
+
+**Core 不做业务判断**：工作流程由 task.md 定义，不是脚本检测。
 
 ## 开发此仓库
 

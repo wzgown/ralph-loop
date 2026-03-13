@@ -13,7 +13,7 @@ description: |
 license: MIT
 metadata:
   author: wzgown
-  version: 3.3.0
+  version: 3.4.0
   category: workflow-automation
   keywords:
     - task-scheduler
@@ -29,17 +29,18 @@ metadata:
     - openclaw
 ---
 
-# Ralph Loop v3.3
+# Ralph Loop v3.4
 
 基于 Anthropic "Effective harnesses for long-running agents" 最佳实践的长时运行任务调度器。
 
-## v3.3 改进
+## v3.4 职责分离
 
-**执行阶段 Prompt 精简**：
-- 移除规划阶段的文档内容
-- 根据功能类型（前端/后端）动态调整工作流程
-- 移除不必要的浏览器工具强调
-- 精简核心原则
+| 组件 | 职责 |
+|------|------|
+| **Core 脚本** | 调度、收集上下文、验证完成信号 |
+| **Skill (AI)** | 规划工作流程、决定验证方式、组织需求文档 |
+
+**Core 不做业务判断**：工作流程由 task.md 定义，不是脚本检测。
 
 ## 架构：全局 Skill + 项目数据分离
 

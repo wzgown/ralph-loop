@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Ralph Loop v3.3 - 长时运行任务调度器 (Python 版本)
+Ralph Loop v3.4 - 长时运行任务调度器
 
-基于 Anthropic "Effective harnesses for long-running agents" 最佳实践
+Core 职责：
+- 调度：启动执行循环
+- 收集：git 状态、进度、功能清单
+- 验证：检查完成信号
 
-核心设计：
-1. Task Planner - 规划阶段：创建 features.json
-2. Task Executor - 执行阶段：增量完成功能
-3. Feature List (JSON) - 结构化功能清单，避免过早标记完成
-4. Incremental Progress - 每次只做一个功能
-5. Clean State - 每次会话结束留下干净的 git 状态
-
-v3.3 改进：
-- 精简执行阶段 prompt，移除规划阶段内容
-- 根据功能类型（前端/后端）动态调整工作流程
-- 移除不必要的浏览器工具强调
+规划职责（由 AI 通过 skill 完成）：
+- 决定工作流程
+- 决定验证方式
+- 组织需求文档
 """
 
 import os
@@ -280,7 +276,7 @@ class RalphUI:
         remaining_str = self._format_time(remaining_timeout) if remaining_timeout > 0 else "N/A"
 
         print()
-        print(Colors.colorize("╔══ Ralph Loop v3.3 ══════════════════════════════════════════╗", Colors.BLUE))
+        print(Colors.colorize("╔══ Ralph Loop v3.4 ══════════════════════════════════════════╗", Colors.BLUE))
         print(Colors.colorize("║", Colors.BLUE) + f" {Colors.BOLD}任务:{Colors.RESET} {task_name}" + Colors.colorize(" ║", Colors.BLUE))
         print(Colors.colorize("║", Colors.BLUE) + f" {Colors.BOLD}代理:{Colors.RESET} {config.agent.upper()}  {Colors.BOLD}循环:{Colors.RESET} #{iteration}" + Colors.colorize(" ║", Colors.BLUE))
         print(Colors.colorize("║", Colors.BLUE) + "                                                              " + Colors.colorize("║", Colors.BLUE))
@@ -418,7 +414,7 @@ class RalphUI:
     def show_help(self):
         """显示帮助"""
         help_text = """
-Ralph Loop v3.3 - 长时运行任务调度器
+Ralph Loop v3.4 - 长时运行任务调度器
 
 用法:
   ralph                          运行当前任务（增量模式，自动检测 agent）
@@ -596,76 +592,16 @@ def git_has_changes() -> bool:
 # Prompt 构建
 # ============================================================
 
-def detect_feature_type(feature: Dict) -> str:
-    """
-    检测功能类型，用于动态调整工作流程
-    """
-    if not feature:
-        return "general"
-
-    # 从 steps 或 verify_command 判断
-    steps = feature.get('steps', [])
-    verify_cmd = feature.get('verify_command', '')
-    desc = feature.get('description', '').lower()
-
-    # 前端特征
-    frontend_keywords = ['页面', 'ui', '按钮', '表单', '组件', '样式', '点击', '浏览器', 'e2e', 'playwright', 'cypress']
-    # 后端特征
-    backend_keywords = ['api', '接口', 'handler', 'service', 'grpc', 'rpc', '数据库', 'sql', '迁移']
-
-    combined = ' '.join(steps).lower() + ' ' + verify_cmd.lower() + ' ' + desc
-
-    if any(kw in combined for kw in frontend_keywords):
-        return "frontend"
-    if any(kw in combined for kw in backend_keywords):
-        return "backend"
-
-    return "general"
-
-def build_workflow_section(feature_type: str) -> str:
-    """
-    根据功能类型构建工作流程
-    """
-    base_workflow = """1. **获取上下文**
-   ```bash
-   pwd  # 确认工作目录
-   git log --oneline -5  # 查看最近提交
-   ```
-
-2. **理解当前功能**
-   - 阅读功能描述和测试步骤
-   - 如有 requirement_refs，阅读相关需求文档
-
-3. **实现功能**
-   - 编写/修改代码
-   - 运行相关测试"""
-
-    if feature_type == "frontend":
-        return base_workflow + """
-   - 使用浏览器自动化工具验证 UI 交互"""
-    elif feature_type == "backend":
-        return base_workflow + """
-   - 运行单元测试/集成测试
-   - 验证 API 响应"""
-    else:
-        return base_workflow + """
-   - 运行相关测试验证"""
-
-    return base_workflow
-
 def build_coding_prompt(iteration: int, output_file: Path) -> bool:
     """
-    构建上下文 Prompt，直接写入文件
-    返回是否成功
+    构建执行 Prompt，直接写入文件
 
-    v3.3 精简版：
-    - 移除规划阶段的文档
-    - 根据功能类型动态调整工作流程
-    - 精简核心原则
+    Core 职责：收集上下文、组织信息
+    规划职责：决定工作流程（已在 task.md 中体现）
     """
     # 获取 git 状态
     git_status_str = git_status()
-    git_log_str = git_log(5)  # 减少到 5 条
+    git_log_str = git_log(5)
 
     # 读取进度文件（最近 30 行）
     progress_content = ""
@@ -684,21 +620,19 @@ def build_coding_prompt(iteration: int, output_file: Path) -> bool:
     next_feature = None
     next_feature_json = ""
     skipped_info = ""
-    feature_type = "general"
 
     if features_data:
         features = features_data.get('features', [])
         next_feature = get_next_pending_feature(features)
         if next_feature:
             next_feature_json = json.dumps(next_feature, ensure_ascii=False, indent=2)
-            feature_type = detect_feature_type(next_feature)
 
         # 获取跳过的功能
         skipped = get_skipped_features(features)
         if skipped:
-            skipped_info = f"""## ⚠️ 已跳过的功能
+            skipped_info = f"""## 已跳过
 
-{', '.join(skipped)}（已达最大重试次数，不要尝试）
+{', '.join(skipped)}（已达最大重试次数）
 
 """
 
@@ -712,36 +646,28 @@ def build_coding_prompt(iteration: int, output_file: Path) -> bool:
 ```
 """
 
-    # 根据功能类型构建工作流程
-    workflow = build_workflow_section(feature_type)
+    feature_id = next_feature.get('id', 'XXX') if next_feature else 'XXX'
 
-    # 精简的 prompt（v3.3）
-    prompt = f"""# Ralph Loop 执行实例 #{iteration}
+    # 精简的 prompt
+    prompt = f"""# Ralph Loop #{iteration}
 
-## 核心原则
+## 原则
 
 | 原则 | 说明 |
 |------|------|
 | 增量工作 | 每次只完成 **一个功能** |
 | 干净状态 | 完成后代码可提交 |
-| 结构化更新 | 只修改 `passes` 字段 |
-
-## 文件路径
-
-| 文件 | 路径 |
-|------|------|
-| 功能清单 | `{config.current_features}` |
-| 进度日志 | `{config.current_progress}` |
+| 只改 passes | 不修改 features.json 其他内容 |
 
 ---
 
-## 当前任务
+## 任务
 
 {task_content}
 
 ---
 
-## Git 状态
+## Git
 
 ```
 {git_status_str}
@@ -749,7 +675,7 @@ def build_coding_prompt(iteration: int, output_file: Path) -> bool:
 {recent_commits}
 ---
 
-## 下一个功能
+## 当前功能
 
 ```json
 {next_feature_json}
@@ -758,31 +684,20 @@ def build_coding_prompt(iteration: int, output_file: Path) -> bool:
 {skipped_info}
 ---
 
-## 工作流程
+## 流程
 
-{workflow}
-
-4. **更新状态**
-   - 只修改 `passes: false` → `passes: true`
-   - **不要**删除或修改其他内容
-
-5. **提交进度**
-   ```bash
-   git add -A
-   git commit -m "feat: 完成 {next_feature.get('id', 'XXX') if next_feature else '功能'}"
-   ```
-
-6. **输出完成信号**（单独一行）
-   ```
-   MISSION_COMPLETE
-   ```
+1. 理解功能 → 阅读 task.md 和需求文档
+2. 实现代码 → 编写、测试
+3. 更新状态 → `passes: false` → `passes: true`
+4. 提交 → `git add -A && git commit -m "feat: {feature_id}"`
+5. 输出 → `MISSION_COMPLETE`（单独一行）
 
 ## 禁止
 
-- ❌ 一次实现多个功能
-- ❌ 修改 features.json 中除 passes 外的任何内容
-- ❌ 未测试就标记 passes: true
-- ❌ 留下未提交的代码
+- ❌ 一次多个功能
+- ❌ 修改 passes 外的内容
+- ❌ 未测试就标记
+- ❌ 未提交代码
 
 """
 
