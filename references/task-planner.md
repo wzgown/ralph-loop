@@ -1,48 +1,35 @@
-# Task Planner 详细流程
+# Task Planner 流程
 
-Task Planner 负责将用户的自然语言需求转换为 Ralph Loop 标准格式。
+Task Planner 负责将用户需求组织成 Ralph Loop 标准格式。
 
-## 创建任务的三种方式
+## 核心理念
 
-### 方式一：直接向 AI 描述需求（推荐）
+**Task Planner 是组织者，不是创建者。**
 
-用户可以直接用自然语言描述需求，AI 会自动创建完整的任务文件：
+- 需求文档通常已存在于项目中（如 `docs/req/`、`specs/` 等）
+- Task Planner 的职责是**组织**这些需求，让执行阶段可以方便查阅
+- 只有在需求不明确时，才需要补充或澄清
 
-```
-用户：我需要实现一个用户个人资料编辑功能，用户可以修改头像、昵称、个人简介，还要能预览更改
+## 工作流程
 
-AI：我来帮你创建这个任务...
-
-    1. 创建 .ralph/current/task.md
-    2. 创建 .ralph/current/requirements/（需求文档）
-    3. 创建 .ralph/current/features.json（5 个功能）
-
-    任务已创建。运行 ./ralph 开始执行。
-```
-
-### 方式二：使用命令行模板
-
-```bash
-./ralph --new                    # 创建空白任务模板
-vim .ralph/current/task.md       # 编辑任务描述
-./ralph --init                   # 初始化任务环境
-```
-
-### 方式三：从现有文件初始化
-
-```bash
-./ralph --init path/to/task.md   # 从现有任务文件初始化
-```
-
-## 步骤详解
-
-### 步骤 1：理解需求
+### 1. 理解需求
 
 1. 分析用户的自然语言描述
 2. 识别主要功能点
 3. 确认技术约束和成功标准
 
-### 步骤 2：创建 task.md
+### 2. 组织需求文档
+
+**如果需求文档已存在**：
+- 在 task.md 中引用路径
+- 如有必要，复制到 `.ralph/current/requirements/` 方便执行阶段查阅
+
+**如果需求分散或不够清晰**：
+- 整理现有需求片段
+- 补充缺失的业务规则
+- 不要重新发明轮子
+
+### 3. 创建 task.md
 
 ```markdown
 # 任务：[简短描述]
@@ -57,79 +44,23 @@ vim .ralph/current/task.md       # 编辑任务描述
 |------|------|------|
 | 认证需求 | `requirements/auth.md` | 用户认证业务规则 |
 
-> **重要**：执行每个功能前，请先阅读相关需求文档。
+> **注意**：执行功能时如需了解业务规则，请查阅相关需求文档。
 
 ## 成功标准
 
 - [ ] 标准 1（可验证）
 - [ ] 标准 2（可验证）
 
-## 实现计划
-
-- [ ] **T1**: 第一步
-- [ ] **T2**: 第二步
-
 ## 约束
 
 **必须：**
 - [技术约束]
-- [业务约束]
 
 **禁止：**
 - [不允许的做法]
-
-## 完成信号
-
-MISSION_COMPLETE
 ```
 
-### 步骤 3：创建 requirements/ 目录（可选）
-
-如果需求包含复杂的业务规则，应创建独立的需求文档：
-
-```bash
-mkdir -p .ralph/current/requirements
-```
-
-**需求文档命名规范：**
-- `auth.md` - 认证相关规则
-- `payment.md` - 支付相关规则
-- `ui-guidelines.md` - UI/UX 规范
-- `api-contracts.md` - API 接口契约
-
-**需求文档格式：**
-```markdown
-# 认证需求
-
-## 登录规则
-
-### 密码强度
-- 最少 8 个字符
-- 必须包含大小写字母和数字
-- 特殊字符可选
-
-### 登录限制
-- 连续失败 5 次锁定 15 分钟
-- 锁定期间显示剩余时间
-
-## 会话管理
-
-### Token 有效期
-- Access Token: 15 分钟
-- Refresh Token: 7 天
-```
-
-**在 features.json 中引用：**
-```json
-{
-  "id": "F001",
-  "description": "密码强度验证",
-  "requirement_refs": ["requirements/auth.md#密码强度"],
-  "verify_command": "npm test -- --grep 'password-strength'"
-}
-```
-
-### 步骤 4：创建 features.json
+### 4. 创建 features.json
 
 **功能拆分原则：**
 
@@ -156,3 +87,15 @@ mkdir -p .ralph/current/requirements
   { "id": "F004", "description": "会话持久化", "verify_command": "npm run test:e2e -- --grep 'session'" }
 ]
 ```
+
+## 输出文件
+
+| 文件 | 用途 |
+|------|------|
+| `task.md` | 任务背景、需求引用、成功标准 |
+| `features.json` | 结构化功能清单（核心） |
+| `requirements/` | 需求文档（按需组织） |
+
+## 进度记录
+
+进度由 `progress.md` 记录，**不在 task.md 中追加任何内容**。
