@@ -200,7 +200,7 @@ metadata:
 | `requirement_refs` | 需求文档引用（可选） |
 | `steps` | 可执行的测试步骤 |
 | `verify_command` | 自动化验证命令 |
-| `passes` | **AI 只能修改此字段** |
+| `passes` | **Core 管理，AI 无权修改** |
 
 ## 命令参考
 
