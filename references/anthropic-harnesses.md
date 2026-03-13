@@ -66,7 +66,7 @@ AI 编码代理在实际应用中面临的核心挑战：
 - Git 状态干净
 
 **Ralph Loop 实现**:
-- stop-hook.sh 三层验证
+- stop_hook.py 三层验证
 - MISSION_COMPLETE 信号检查
 - Git 状态强制检查
 
@@ -108,7 +108,7 @@ Anthropic Harnesses          Ralph Loop
 ─────────────────────────────────────────────
 Incremental Work        →    features.json 功能拆分
 Feature List            →    features.json 结构
-Clean State             →    stop-hook.sh 验证
+Clean State             →    stop_hook.py 验证
 E2E Verification        →    浏览器自动化 + verify_command
 Progress Tracking       →    progress.md
 ```
@@ -191,7 +191,7 @@ Progress Tracking       →    progress.md
 ### 为什么需要 MISSION_COMPLETE 信号？
 
 1. **明确结束** - AI 明确表示任务完成
-2. **验证触发** - stop-hook.sh 检测信号后执行验证
+2. **验证触发** - stop_hook.py 检测信号后执行验证
 3. **失败检测** - 未输出信号视为失败
 
 ## 扩展阅读
@@ -214,7 +214,7 @@ Ralph Loop 是 Anthropic harnesses 最佳实践的完整实现：
 
 1. **增量执行** - 每次一个功能
 2. **结构化清单** - features.json
-3. **状态验证** - stop-hook.sh
+3. **状态验证** - stop_hook.py
 4. **端到端测试** - 浏览器自动化
 5. **进度追踪** - progress.md
 

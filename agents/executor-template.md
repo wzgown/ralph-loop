@@ -178,7 +178,7 @@ MISSION_COMPLETE
    - 确保工具语法正确
 
 3. **更新检测脚本**
-   - 编辑 `core/agent-detector.sh`
+   - 编辑 `core/agent_detector.py`
    - 添加新 agent 的检测逻辑
 
 4. **更新安装脚本**

@@ -86,7 +86,7 @@
 
 ## 验证流程
 
-### 三层验证（stop-hook.sh）
+### 三层验证（stop_hook.py）
 
 Ralph Loop 在每次迭代结束时执行三层验证：
 

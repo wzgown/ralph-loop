@@ -243,10 +243,10 @@ if [ "$SKIP_SKILL" = false ]; then
     # 复制核心脚本
     echo -e "${BLUE}  复制核心脚本...${NC}"
     mkdir -p "$GLOBAL_SKILL_DIR/core"
-    fetch_file "core/stop-hook.sh" "$GLOBAL_SKILL_DIR/core/stop-hook.sh"
+    fetch_file "core/stop_hook.py" "$GLOBAL_SKILL_DIR/core/stop_hook.py"
     fetch_file "core/ralph.py" "$GLOBAL_SKILL_DIR/core/ralph.py"
-    fetch_file "core/agent-detector.sh" "$GLOBAL_SKILL_DIR/core/agent-detector.sh"
-    chmod +x "$GLOBAL_SKILL_DIR/core/"*.sh "$GLOBAL_SKILL_DIR/core/ralph.py" 2>/dev/null || true
+    fetch_file "core/agent_detector.py" "$GLOBAL_SKILL_DIR/core/agent_detector.py"
+    chmod +x "$GLOBAL_SKILL_DIR/core/"*.py 2>/dev/null || true
 
     # 复制代理执行指令
     echo -e "${BLUE}  复制代理执行指令...${NC}"
@@ -394,8 +394,8 @@ if [ "$SKIP_SKILL" = false ]; then
     echo "     ├── SKILL.md           # Skill 定义"
     echo "     ├── core/              # 核心脚本 (全局共享)"
     echo "     │   ├── ralph.py"
-    echo "     │   ├── stop-hook.sh"
-    echo "     │   └── agent-detector.sh"
+    echo "     │   ├── stop_hook.py"
+    echo "     │   └── agent_detector.py"
     echo "     ├── agents/            # 代理执行指令"
     echo "     ├── templates/         # 模板文件"
     echo "     └── references/        # 参考文档"

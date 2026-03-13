@@ -37,7 +37,7 @@ metadata:
 
 | AI 执行者 | Core 脚本 |
 |-----------|-----------|
-| 实现代码 | 验证 (stop-hook.sh) |
+| 实现代码 | 验证 (stop_hook.py) |
 | 运行测试 | 更新 passes: true |
 | 输出 MISSION_COMPLETE | Git commit |
 
@@ -53,8 +53,8 @@ metadata:
 ├── SKILL.md                    # 本文件
 ├── core/                       # 核心脚本（全局共享）
 │   ├── ralph.py                # 主调度器
-│   ├── stop-hook.sh            # 验证脚本
-│   └── agent-detector.sh       # 代理检测
+│   ├── stop_hook.py            # 验证脚本
+│   └── agent_detector.py       # 代理检测
 ├── agents/                     # 代理执行指令
 ├── templates/                  # 模板文件
 └── references/                 # 参考文档
@@ -143,8 +143,8 @@ metadata:
 ├── SKILL.md                    # Skill 元数据
 ├── core/                       # 核心脚本（全局共享）
 │   ├── ralph.py                # Python 主调度器
-│   ├── stop-hook.sh            # 验证脚本
-│   └── agent-detector.sh       # 代理自动检测
+│   ├── stop_hook.py            # 验证脚本
+│   └── agent_detector.py       # 代理自动检测
 ├── agents/                     # 代理执行指令
 │   ├── base-executor.md        # 通用执行模板
 │   ├── executor-claude.md
