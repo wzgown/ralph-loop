@@ -523,6 +523,61 @@ def get_next_pending_feature(features: List[Dict]) -> Optional[Dict]:
             return f
     return None
 
+def mark_feature_passed(feature_id: str) -> bool:
+    """
+    标记功能为已完成
+    Core 脚本专用，AI 不应该调用此函数
+    """
+    features_data = load_features()
+    if not features_data:
+        return False
+
+    features = features_data.get('features', [])
+    for f in features:
+        if f.get('id') == feature_id:
+            f['passes'] = True
+            f['completed_at'] = datetime.now().isoformat()
+            save_features(features_data)
+            return True
+    return False
+
+def git_commit_feature(feature_id: str, message: str = "") -> bool:
+    """
+    提交代码
+    Core 脚本专用，AI 不应该调用此函数
+    """
+    if not message:
+        message = f"feat: 完成 {feature_id}"
+
+    try:
+        # git add
+        subprocess.run(
+            ['git', 'add', '-A'],
+            cwd=config.project_root,
+            check=True,
+            capture_output=True
+        )
+
+        # git commit
+        result = subprocess.run(
+            ['git', 'commit', '-m', f"{message}\n\nCo-Authored-By: Ralph Loop <noreply@ralph-loop.dev>"],
+            cwd=config.project_root,
+            capture_output=True,
+            text=True
+        )
+
+        if result.returncode == 0:
+            return True
+        else:
+            # 可能没有更改需要提交
+            if "nothing to commit" in result.stdout or "nothing to commit" in result.stderr:
+                return True
+            ui.warn(f"Git commit 失败: {result.stderr}")
+            return False
+    except Exception as e:
+        ui.err(f"Git commit 异常: {e}")
+        return False
+
 # ============================================================
 # Git 工具
 # ============================================================
@@ -623,13 +678,15 @@ def build_coding_prompt(iteration: int, output_file: Path) -> bool:
     # 精简的 prompt
     prompt = f"""# Ralph Loop #{iteration}
 
-## 原则
+## 职责边界
 
-| 原则 | 说明 |
-|------|------|
-| 增量工作 | 每次只完成 **一个功能** |
-| 干净状态 | 完成后代码可提交 |
-| 只改 passes | 不修改 features.json 其他内容 |
+| AI 执行者 | Core 脚本 |
+|-----------|-----------|
+| 实现代码 | 验证 (stop-hook) |
+| 运行测试 | 更新 passes: true |
+| 输出 MISSION_COMPLETE | Git commit |
+
+**重要**：你只负责实现代码，验收和提交由 Core 脚本自动完成。
 
 ---
 
@@ -659,17 +716,16 @@ def build_coding_prompt(iteration: int, output_file: Path) -> bool:
 ## 流程
 
 1. 理解功能 → 阅读 task.md 和需求文档
-2. 实现代码 → 编写、测试
-3. 更新状态 → `passes: false` → `passes: true`
-4. 提交 → `git add -A && git commit -m "feat: {feature_id}"`
-5. 输出 → `MISSION_COMPLETE`（单独一行）
+2. 实现代码 → 编写、运行测试
+3. 确认完成 → 代码可编译、测试通过
+4. 输出信号 → 单独一行 `MISSION_COMPLETE`
 
 ## 禁止
 
 - ❌ 一次多个功能
-- ❌ 修改 passes 外的内容
-- ❌ 未测试就标记
-- ❌ 未提交代码
+- ❌ 修改 features.json（由 Core 管理）
+- ❌ Git commit（由 Core 管理）
+- ❌ 未测试就输出 MISSION_COMPLETE
 
 """
 
@@ -1140,23 +1196,32 @@ def main_loop():
         # 运行 Stop Hook 验证
         hook_success = run_stop_hook(log_file, iteration)
 
-        # 重新加载功能数据检查更新
-        features_data = load_features()
-        features = features_data.get('features', [])
-        new_passed = sum(1 for f in features if f.get('passes', False))
-
         if hook_success:
-            if new_passed > passed_features:
+            # 验证通过：Core 脚本负责更新 passes 和 commit
+            if current_feature:
+                feature_id = current_feature.get('id', 'XXX')
+
+                # 1. 更新 passes: true
+                ui.step(f"更新 {feature_id} passes: true...")
+                if mark_feature_passed(feature_id):
+                    passed_features += 1
+                    ui.ok(f"✅ 已标记 {feature_id} 完成")
+
+                # 2. Git commit
+                ui.step("Git commit...")
+                if git_commit_feature(feature_id):
+                    ui.ok("✅ 已提交代码")
+                else:
+                    ui.warn("⚠️ Git commit 失败，但功能已完成")
+
                 ui.ok("════════════════════════════════════════════════════════")
-                ui.ok(f"✅ 功能完成！({passed_features} → {new_passed})")
+                ui.ok(f"✅ 功能完成！({passed_features}/{total_features})")
                 ui.ok("════════════════════════════════════════════════════════")
-                passed_features = new_passed
+
                 update_progress(iteration, True, passed_features, total_features)
-            else:
-                ui.ok("验证通过，但无新功能完成")
 
             # 检查是否全部完成
-            remaining = total_features - new_passed
+            remaining = total_features - passed_features
             if remaining == 0:
                 ui.ok("════════════════════════════════════════════════════════")
                 ui.ok("🎉 所有功能已完成！任务结束")

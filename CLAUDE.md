@@ -32,12 +32,16 @@ Ralph Loop 是一个 **Claude Code Skill**，基于 Anthropic "Effective harness
 
 ## v3.4 职责分离
 
-| 组件 | 职责 |
-|------|------|
-| **Core 脚本** | 调度、收集上下文、验证完成信号 |
-| **Skill (AI)** | 规划工作流程、决定验证方式、组织需求文档 |
+| AI 执行者 | Core 脚本 |
+|-----------|-----------|
+| 实现代码 | 验证 (stop-hook.sh) |
+| 运行测试 | 更新 passes: true |
+| 输出 MISSION_COMPLETE | Git commit |
 
-**Core 不做业务判断**：工作流程由 task.md 定义，不是脚本检测。
+**重要**：
+- AI **无权**修改 features.json（由 Core 管理）
+- AI **无权**执行 git commit（由 Core 管理）
+- 验证通过后，Core 自动更新状态并提交代码
 
 ## 开发此仓库
 
