@@ -122,7 +122,7 @@ class Config:
         self.current_task = self.current_dir / 'task.md'
         self.current_features = self.current_dir / 'features.json'
         self.current_progress = self.current_dir / 'progress.md'
-        self.stop_hook = self.core_dir / 'stop-hook.sh'
+        self.stop_hook = self.core_dir / 'stop_hook.py'
         self.feature_retries = self.logs_dir / 'feature_retries.json'
 
         # 4. 确保数据目录存在
@@ -848,7 +848,7 @@ def run_stop_hook(log_file: Path, iteration: int) -> bool:
     try:
         with open(hook_log, 'w', encoding='utf-8') as f:
             result = subprocess.run(
-                ['bash', str(config.stop_hook)],
+                [sys.executable, str(config.stop_hook)],
                 cwd=config.project_root,
                 stdout=f,
                 stderr=subprocess.STDOUT,
