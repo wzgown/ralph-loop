@@ -57,7 +57,6 @@ metadata:
 
 项目/.ralph/                     # 项目数据（每个项目独立）
 ├── current/                    # 当前任务
-├── queue/                      # 任务队列
 ├── tasks/                      # 历史归档
 └── logs/                       # 日志
 ```
@@ -168,7 +167,6 @@ metadata:
 │   ├── features.json           # 功能清单 ⬅️ 核心
 │   ├── requirements/           # 需求文档（可选）
 │   └── progress.md             # 进度日志
-├── queue/                      # 任务队列
 ├── tasks/                      # 历史任务归档
 └── logs/                       # 循环日志
 ```

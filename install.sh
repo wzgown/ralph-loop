@@ -297,7 +297,7 @@ if [ "$SKIP_SCAFFOLD" = false ]; then
     fi
 
     # 创建运行时目录结构（不包含脚本，只有数据）
-    mkdir -p "$PROJECT_RALPH_DIR"/{current,queue,tasks,logs,requirements}
+    mkdir -p "$PROJECT_RALPH_DIR"/{current,tasks,logs}
 
     # 创建当前任务目录的默认文件（如果不存在）
     if [ ! -f "$PROJECT_RALPH_DIR/current/task.md" ]; then

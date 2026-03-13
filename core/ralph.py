@@ -1243,19 +1243,6 @@ def show_status():
     else:
         print("   无当前任务")
 
-    print()
-    print("📋 任务队列:")
-    if config.task_queue.exists():
-        try:
-            with open(config.task_queue, 'r', encoding='utf-8') as f:
-                queue = json.load(f)
-            pending = sum(1 for t in queue.get('tasks', []) if t.get('status') == 'pending')
-            print(f"   待处理: {pending} 个任务")
-        except:
-            print("   队列读取失败")
-    else:
-        print("   队列为空")
-
 def show_features():
     """显示功能清单"""
     ui.header("功能清单")
