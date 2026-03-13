@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║  Ralph Loop - 安装脚本 v3.2                                                  ║
+# ║  Ralph Loop - 安装脚本 v3.3                                                  ║
 # ║                                                                              ║
 # ║  架构设计:                                                                    ║
 # ║  - 全局 Skill: ~/.claude/skills/ralph-loop/ (脚本、模板、参考文档)             ║
@@ -196,7 +196,7 @@ esac
 
 echo ""
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  Ralph Loop v3.2 安装程序${NC}"
+echo -e "${BLUE}  Ralph Loop v3.3 安装程序${NC}"
 echo -e "${BLUE}  代理类型: $AGENT_TYPE${NC}"
 echo -e "${BLUE}  安装模式: $INSTALL_MODE${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════${NC}"
@@ -347,7 +347,7 @@ EOF
     # 创建便捷命令（指向全局 Skill）
     cat > ralph << 'RALPH_SCRIPT'
 #!/bin/bash
-# Ralph Loop v3.2 - Shell wrapper
+# Ralph Loop v3.3 - Shell wrapper
 # 指向全局 Skill 目录的核心脚本
 export LANG="en_US.UTF-8"
 export LC_ALL="en_US.UTF-8"
@@ -384,7 +384,7 @@ fi
 # 步骤 4: 显示完成信息
 # ============================================================
 echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  🎉 Ralph Loop v3.2 安装完成！${NC}"
+echo -e "${GREEN}  🎉 Ralph Loop v3.3 安装完成！${NC}"
 echo -e "${GREEN}════════════════════════════════════════════════════════${NC}"
 echo ""
 

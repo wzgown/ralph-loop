@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Ralph Loop 是一个 **Claude Code Skill**，基于 Anthropic "Effective harnesses for long-running agents" 最佳实践的长时运行任务调度器。
 
-## v3.2 架构
+## v3.3 架构
 
 **全局 Skill + 项目数据分离：**
 
@@ -30,6 +30,12 @@ Ralph Loop 是一个 **Claude Code Skill**，基于 Anthropic "Effective harness
 ├── tasks/                      # 历史归档
 └── logs/                       # 日志
 ```
+
+## v3.3 改进
+
+- **执行 Prompt 精简**：移除规划阶段文档，只保留执行必需内容
+- **动态工作流程**：根据功能类型（前端/后端）调整工作流程
+- **移除无关强调**：后端任务不再强调浏览器工具
 
 ## 开发此仓库
 
@@ -66,7 +72,6 @@ curl -fsSL https://raw.githubusercontent.com/wzgown/ralph-loop/main/install.sh |
 | AI 一次尝试做太多 | **增量工作** - 每次只做一个功能 |
 | AI 过早宣布完成 | **Feature List (JSON)** - 结构化功能清单，客观验证 |
 | AI 留下混乱状态 | **Clean State** - 每次会话结束确保代码可提交 |
-| AI 未正确测试 | **端到端验证** - 使用浏览器自动化工具 |
 | 上下文丢失 | **Progress File** - 记录已完成的工作 |
 
 ## features.json 规范
@@ -107,4 +112,3 @@ MISSION_COMPLETE
 - [SKILL.md](SKILL.md) - Skill 完整定义
 - [references/task-planner.md](references/task-planner.md) - Task Planner 详细流程
 - [references/features-format.md](references/features-format.md) - features.json 格式规范
-- [agents/executor-claude.md](agents/executor-claude.md) - Claude Code 执行指令

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "F001",
+    "description": "第一个功能",
+    "requirement_refs": [],
+    "steps": ["验证步骤"],
+    "verify_command": "echo '验证通过'",
+    "passes": false
+  }
+]

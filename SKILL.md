@@ -13,7 +13,7 @@ description: |
 license: MIT
 metadata:
   author: wzgown
-  version: 3.2.0
+  version: 3.3.0
   category: workflow-automation
   keywords:
     - task-scheduler
@@ -21,6 +21,7 @@ metadata:
     - multi-agent
     - feature-list
     - long-running-agents
+    - ralph
   compatibility:
     - claude-code
     - codex-cli
@@ -28,13 +29,19 @@ metadata:
     - openclaw
 ---
 
-# Ralph Loop v3.2
+# Ralph Loop v3.3
 
 基于 Anthropic "Effective harnesses for long-running agents" 最佳实践的长时运行任务调度器。
 
-## v3.2 架构重构
+## v3.3 改进
 
-**核心变化：全局 Skill + 项目数据分离**
+**执行阶段 Prompt 精简**：
+- 移除规划阶段的文档内容
+- 根据功能类型（前端/后端）动态调整工作流程
+- 移除不必要的浏览器工具强调
+- 精简核心原则
+
+## 架构：全局 Skill + 项目数据分离
 
 ```
 ~/.claude/skills/ralph-loop/    # 全局 Skill（脚本、模板）

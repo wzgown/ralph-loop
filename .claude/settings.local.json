@@ -31,7 +31,9 @@
       "Bash(core/ralph --help 2>&1 | head -30)",
       "Bash(./ralph --detect 2>&1)",
       "Bash(./install.sh --agent claude)",
-      "Bash(./install.sh --skill-only)"
+      "Bash(./install.sh --skill-only)",
+      "Bash(./install.sh 2>&1 | head -30)",
+      "Bash(./install.sh 2>&1 | head -15)"
     ]
   }
 }
