@@ -1200,6 +1200,7 @@ def main_loop():
             # 验证通过：Core 脚本负责更新 passes 和 commit
             if current_feature:
                 feature_id = current_feature.get('id', 'XXX')
+                feature_desc = current_feature.get('description', '')
 
                 # 1. 更新 passes: true
                 ui.step(f"更新 {feature_id} passes: true...")
@@ -1209,7 +1210,8 @@ def main_loop():
 
                 # 2. Git commit
                 ui.step("Git commit...")
-                if git_commit_feature(feature_id):
+                commit_msg = f"feat({feature_id}): {feature_desc}" if feature_desc else ""
+                if git_commit_feature(feature_id, commit_msg):
                     ui.ok("✅ 已提交代码")
                 else:
                     ui.warn("⚠️ Git commit 失败，但功能已完成")
